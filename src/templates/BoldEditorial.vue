@@ -78,15 +78,5 @@ defineProps({
         {{ content.text }}
       </div>
     </div>
-
-    <!-- Footer -->
-    <footer :style="{
-      marginTop: 'auto',
-      paddingTop: '32px',
-      fontSize: '12px',
-      color: '#6b7280'
-    }">
-      Roger Eaton Studio
-    </footer>
   </div>
 </template>

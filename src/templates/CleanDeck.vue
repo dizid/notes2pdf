@@ -128,17 +128,5 @@ defineProps({
       </div>
     </div>
 
-    <!-- Footer -->
-    <footer :style="{
-      marginTop: 'auto',
-      paddingTop: '24px',
-      borderTop: '1px solid #e5e7eb',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between'
-    }">
-      <span :style="{ fontSize: '12px', color: '#9ca3af' }">Roger Eaton Studio</span>
-      <span :style="{ fontSize: '12px', color: '#9ca3af' }">{{ new Date().toLocaleDateString() }}</span>
-    </footer>
   </div>
 </template>

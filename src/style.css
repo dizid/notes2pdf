@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Custom theme for Roger Eaton branded aesthetic */
+@theme {
+  --font-display: "Georgia", serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  --color-brand: #1a1a1a;
+  --color-brand-light: #333333;
+  --color-accent: #c9a962;
+}
+
+/* Base styles */
+body {
+  font-family: var(--font-body);
+  background-color: #fafafa;
+  color: var(--color-brand);
+}
+
+/* Typography for editorial feel */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}

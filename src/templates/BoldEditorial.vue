@@ -5,38 +5,87 @@ defineProps({
 </script>
 
 <template>
-  <div class="w-full h-full bg-gray-900 text-white p-12 flex flex-col">
+  <div :style="{
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#111827',
+    color: '#ffffff',
+    padding: '48px',
+    display: 'flex',
+    flexDirection: 'column',
+    fontFamily: 'Georgia, serif',
+    boxSizing: 'border-box'
+  }">
     <!-- Header area -->
-    <header class="flex-1 flex flex-col justify-end pb-8">
-      <h1 class="text-5xl font-bold leading-tight tracking-tight">
+    <header :style="{
+      flex: '1',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'flex-end',
+      paddingBottom: '32px'
+    }">
+      <h1 :style="{
+        fontSize: '48px',
+        fontWeight: 'bold',
+        lineHeight: '1.1',
+        letterSpacing: '-0.02em',
+        margin: '0'
+      }">
         {{ content.title || 'Untitled' }}
       </h1>
     </header>
 
     <!-- Content area -->
-    <div class="border-t border-white/20 pt-8">
+    <div :style="{
+      borderTop: '1px solid rgba(255,255,255,0.2)',
+      paddingTop: '32px'
+    }">
       <!-- Images grid -->
-      <div v-if="content.images?.length" class="mb-6 grid grid-cols-2 gap-3">
+      <div v-if="content.images?.length" :style="{
+        marginBottom: '24px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '12px'
+      }">
         <div
           v-for="img in content.images.slice(0, 4)"
           :key="img.id"
-          class="aspect-square bg-gray-800 rounded overflow-hidden"
+          :style="{
+            aspectRatio: '1',
+            backgroundColor: '#1f2937',
+            borderRadius: '4px',
+            overflow: 'hidden'
+          }"
         >
-          <img :src="img.data" :alt="img.name" class="w-full h-full object-cover" />
+          <img :src="img.data" :alt="img.name" :style="{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }" />
         </div>
       </div>
 
       <!-- Text content -->
       <div
         v-if="content.text"
-        class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap"
+        :style="{
+          color: '#d1d5db',
+          fontSize: '14px',
+          lineHeight: '1.6',
+          whiteSpace: 'pre-wrap'
+        }"
       >
         {{ content.text }}
       </div>
     </div>
 
     <!-- Footer -->
-    <footer class="mt-auto pt-8 text-xs text-gray-500">
+    <footer :style="{
+      marginTop: 'auto',
+      paddingTop: '32px',
+      fontSize: '12px',
+      color: '#6b7280'
+    }">
       Roger Eaton Studio
     </footer>
   </div>

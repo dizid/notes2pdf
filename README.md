@@ -102,18 +102,10 @@ Built with modern, lightweight tools:
 
 ---
 
-## From Roger Eaton Studio
-
-Created by [Roger Eaton](https://rogereaton.com)—photographer, filmmaker, and cinematographer who's worked with Vogue, Discovery Channel, and Angelina Jolie.
-
-Built to solve a real problem: the creative bottleneck between gathering ideas and presenting them professionally.
-
----
-
 ## License
 
 MIT
 
 ---
 
-**Stop formatting. Start sharing.**
+Made with ♥ by [dizid.com](https://dizid.com)

@@ -26,16 +26,26 @@ const templateComponent = computed(() => {
       <span class="text-xs text-gray-400">A4 format</span>
     </div>
 
-    <!-- Preview container with A4 aspect ratio -->
+    <!-- Preview container -->
     <div class="p-6 bg-gray-100">
+      <!-- Scaled preview for display -->
       <div
-        id="pdf-preview"
-        class="bg-white shadow-lg mx-auto"
-        style="width: 100%; max-width: 400px; aspect-ratio: 1/1.414;"
+        class="bg-white shadow-lg mx-auto overflow-hidden"
+        style="width: 100%; max-width: 300px; aspect-ratio: 1/1.414;"
       >
-        <div class="w-full h-full overflow-hidden" style="transform: scale(0.5); transform-origin: top left; width: 200%; height: 200%;">
+        <div class="origin-top-left" style="transform: scale(0.35); width: 285.7%; height: 285.7%;">
           <component :is="templateComponent" :content="content" />
         </div>
+      </div>
+    </div>
+
+    <!-- Hidden full-size element for PDF export -->
+    <div class="fixed -left-[9999px] top-0">
+      <div
+        id="pdf-preview"
+        style="width: 210mm; min-height: 297mm; background: white;"
+      >
+        <component :is="templateComponent" :content="content" />
       </div>
     </div>
   </div>

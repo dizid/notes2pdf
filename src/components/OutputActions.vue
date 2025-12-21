@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { usePdfExport } from '../composables/usePdfExport'
 import { useStorage } from '../composables/useStorage'
 

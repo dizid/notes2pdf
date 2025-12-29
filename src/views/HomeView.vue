@@ -14,7 +14,7 @@ const content = ref({
 const selectedTemplate = ref('bold-editorial')
 
 const hasContent = computed(() => {
-  return content.value.title.trim() || content.value.text.trim() || content.value.images.length > 0
+  return !!(content.value.title.trim() || content.value.text.trim() || content.value.images.length > 0)
 })
 
 function updateContent(newContent) {

@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useStorage } from '../composables/useStorage'
+import { useToast } from '../composables/useToast'
 
 const { getHistory, deleteFromHistory, clearHistory } = useStorage()
+const { showSuccess } = useToast()
 const history = ref([])
 
 onMounted(() => {
@@ -15,10 +17,9 @@ function handleDelete(id) {
 }
 
 function handleClear() {
-  if (confirm('Clear all history?')) {
-    clearHistory()
-    history.value = []
-  }
+  clearHistory()
+  history.value = []
+  showSuccess('History cleared')
 }
 
 function formatDate(timestamp) {

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { usePdfExport } from '../composables/usePdfExport'
 import { useStorage } from '../composables/useStorage'
+import { useToast } from '../composables/useToast'
 
 const props = defineProps({
   content: Object,
@@ -11,6 +12,7 @@ const props = defineProps({
 
 const { exportPdf, isExporting } = usePdfExport()
 const { saveToHistory } = useStorage()
+const { showSuccess } = useToast()
 
 const validationErrors = computed(() => {
   const errors = []
@@ -37,6 +39,8 @@ async function handleExport() {
     template: props.template,
     timestamp: Date.now()
   })
+
+  showSuccess('PDF downloaded!')
 }
 </script>
 

@@ -1,21 +1,32 @@
 <script setup>
 import { computed } from 'vue'
-import BoldEditorial from '../templates/BoldEditorial.vue'
-import PhotoSpread from '../templates/PhotoSpread.vue'
-import CleanDeck from '../templates/CleanDeck.vue'
+import { useTemplates } from '../composables/useTemplates'
+import DynamicTemplate from '../templates/DynamicTemplate.vue'
 
 const props = defineProps({
   content: Object,
   template: String
 })
 
+const { getTemplateById } = useTemplates()
+
+const currentTemplate = computed(() => getTemplateById(props.template))
+
+// For built-in templates, use their component directly
+// For custom templates, use DynamicTemplate with their styles
 const templateComponent = computed(() => {
-  const templates = {
-    'bold-editorial': BoldEditorial,
-    'photo-spread': PhotoSpread,
-    'clean-deck': CleanDeck
+  if (currentTemplate.value?.component) {
+    return currentTemplate.value.component
   }
-  return templates[props.template] || BoldEditorial
+  return DynamicTemplate
+})
+
+// Pass styles to DynamicTemplate for custom templates
+const templateStyles = computed(() => {
+  if (currentTemplate.value?.type === 'custom') {
+    return currentTemplate.value.styles || {}
+  }
+  return null
 })
 </script>
 
@@ -34,7 +45,11 @@ const templateComponent = computed(() => {
         style="width: 100%; max-width: 300px; aspect-ratio: 1/1.414;"
       >
         <div class="origin-top-left" style="transform: scale(0.35); width: 285.7%; height: 285.7%;">
-          <component :is="templateComponent" :content="content" />
+          <component
+            :is="templateComponent"
+            :content="content"
+            :styles="templateStyles"
+          />
         </div>
       </div>
     </div>
@@ -45,7 +60,11 @@ const templateComponent = computed(() => {
         id="pdf-preview"
         style="width: 210mm; min-height: 297mm; background: white;"
       >
-        <component :is="templateComponent" :content="content" />
+        <component
+          :is="templateComponent"
+          :content="content"
+          :styles="templateStyles"
+        />
       </div>
     </div>
   </div>

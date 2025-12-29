@@ -18,6 +18,13 @@ import { RouterLink } from 'vue-router'
             Create
           </RouterLink>
           <RouterLink
+            to="/studio"
+            class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            active-class="text-gray-900 font-medium"
+          >
+            Design Studio
+          </RouterLink>
+          <RouterLink
             to="/history"
             class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             active-class="text-gray-900 font-medium"

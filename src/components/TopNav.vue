@@ -6,33 +6,34 @@ import { RouterLink } from 'vue-router'
   <nav class="bg-white border-b border-gray-200">
     <div class="max-w-6xl mx-auto px-6 py-4">
       <div class="flex items-center justify-between">
-        <RouterLink to="/" class="text-xl font-medium tracking-tight text-gray-900">
-          Notes to Deck
+        <RouterLink to="/app" class="text-xl font-semibold tracking-tight text-gray-900">
+          dizid
         </RouterLink>
         <div class="flex gap-8">
           <RouterLink
-            to="/"
+            to="/app"
             class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             active-class="text-gray-900 font-medium"
+            exact
           >
             Create
           </RouterLink>
           <RouterLink
-            to="/studio"
+            to="/app/studio"
             class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             active-class="text-gray-900 font-medium"
           >
-            Design Studio
+            Template Builder
           </RouterLink>
           <RouterLink
-            to="/history"
+            to="/app/history"
             class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             active-class="text-gray-900 font-medium"
           >
             History
           </RouterLink>
           <RouterLink
-            to="/about"
+            to="/app/about"
             class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             active-class="text-gray-900 font-medium"
           >

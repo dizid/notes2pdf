@@ -1,15 +1,22 @@
 <script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import TopNav from './components/TopNav.vue'
 import ToastContainer from './components/ToastContainer.vue'
+
+const route = useRoute()
+
+// Show app chrome (nav, footer) only on /app routes
+const isAppRoute = computed(() => route.path.startsWith('/app'))
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col">
-    <TopNav />
+  <div class="min-h-screen flex flex-col" :class="isAppRoute ? 'bg-gray-50' : 'bg-white'">
+    <TopNav v-if="isAppRoute" />
     <main class="flex-1">
       <router-view />
     </main>
-    <footer class="py-6 text-center text-sm text-gray-400 border-t border-gray-200">
+    <footer v-if="isAppRoute" class="py-6 text-center text-sm text-gray-400 border-t border-gray-200">
       Made with <span class="text-red-500">&hearts;</span> by <a href="https://dizid.com" target="_blank" class="text-gray-600 hover:text-gray-900">dizid.com</a>
     </footer>
     <ToastContainer />

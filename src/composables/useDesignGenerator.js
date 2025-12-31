@@ -3,7 +3,150 @@ import { ref } from 'vue'
 const isGenerating = ref(false)
 const error = ref(null)
 
+// Curated font pairs for beautiful typography
+export const FONT_PAIRS = [
+  { id: 'classic-elegant', name: 'Classic Elegant', heading: 'Playfair Display', body: 'Source Sans 3', mood: 'sophisticated' },
+  { id: 'modern-minimal', name: 'Modern Minimal', heading: 'Inter', body: 'Inter', mood: 'clean' },
+  { id: 'editorial-bold', name: 'Editorial Bold', heading: 'DM Serif Display', body: 'DM Sans', mood: 'magazine' },
+  { id: 'creative', name: 'Creative', heading: 'Abril Fatface', body: 'Poppins', mood: 'artistic' },
+  { id: 'friendly', name: 'Friendly', heading: 'Nunito', body: 'Nunito', mood: 'approachable' },
+  { id: 'professional', name: 'Professional', heading: 'Merriweather', body: 'Open Sans', mood: 'corporate' },
+  { id: 'geometric', name: 'Geometric', heading: 'Raleway', body: 'Lato', mood: 'modern' },
+  { id: 'bold-display', name: 'Bold Display', heading: 'Oswald', body: 'Roboto', mood: 'impact' },
+  { id: 'literary', name: 'Literary', heading: 'Cormorant Garamond', body: 'Proza Libre', mood: 'elegant' },
+  { id: 'tech', name: 'Tech', heading: 'Space Grotesk', body: 'IBM Plex Sans', mood: 'technical' }
+]
+
+// Spacing presets for different densities
+const DENSITY_PRESETS = {
+  compact: { spacing: '1rem', scale: 0.9 },
+  normal: { spacing: '1.5rem', scale: 1 },
+  spacious: { spacing: '2.5rem', scale: 1.1 }
+}
+
+// Border radius presets
+const ROUNDED_PRESETS = {
+  none: '0',
+  subtle: '4px',
+  medium: '8px',
+  full: '16px'
+}
+
+// Shared color utility functions
+export function isLightColor(hex) {
+  if (!hex || typeof hex !== 'string') return true
+  const clean = hex.replace('#', '')
+  if (clean.length !== 6) return true
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.5
+}
+
+export function isDarkColor(hex) {
+  return !isLightColor(hex)
+}
+
 export function useDesignGenerator() {
+  // Generate new standardized design tokens
+  async function generateDesignTokens({ colors, prompt, mood, suggestedGradient, fontPairId, density = 'normal' }) {
+    isGenerating.value = true
+    error.value = null
+
+    try {
+      const tokens = generateLocalTokens({ colors, prompt, mood, suggestedGradient, fontPairId, density })
+      return tokens
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      isGenerating.value = false
+    }
+  }
+
+  // Generate standardized design tokens locally
+  function generateLocalTokens({ colors, prompt, mood, suggestedGradient, fontPairId, density = 'normal' }) {
+    const primaryColor = colors?.[0] || '#1a1a1a'
+    const secondaryColor = colors?.[1] || '#666666'
+    const accentColor = colors?.[2] || '#e63946'
+
+    // Parse prompt for style hints
+    const isMinimal = /minimal|clean|simple/i.test(prompt || '')
+    const isBold = /bold|dramatic|impact/i.test(prompt || '')
+    const isElegant = /elegant|luxury|premium|sophisticated/i.test(prompt || '')
+    const isModern = /modern|tech|startup/i.test(prompt || '')
+    const isPlayful = /playful|fun|creative|vibrant/i.test(prompt || '')
+    const isDark = /dark|night|moody/i.test(prompt || '') || mood?.brightness === 'dark'
+
+    // Select font pair based on prompt or explicit selection
+    let fontPair = FONT_PAIRS.find(fp => fp.id === fontPairId)
+    if (!fontPair) {
+      // Auto-select based on prompt mood
+      if (isElegant) fontPair = FONT_PAIRS.find(fp => fp.id === 'classic-elegant')
+      else if (isBold) fontPair = FONT_PAIRS.find(fp => fp.id === 'bold-display')
+      else if (isModern) fontPair = FONT_PAIRS.find(fp => fp.id === 'tech')
+      else if (isPlayful) fontPair = FONT_PAIRS.find(fp => fp.id === 'creative')
+      else if (isMinimal) fontPair = FONT_PAIRS.find(fp => fp.id === 'modern-minimal')
+      else fontPair = FONT_PAIRS.find(fp => fp.id === 'modern-minimal')
+    }
+
+    // Determine mode (light/dark)
+    const mode = isDark ? 'dark' : 'light'
+
+    // Calculate colors based on mode
+    const bgColor = mode === 'dark' ? '#0f0f0f' : '#ffffff'
+    const surfaceColor = mode === 'dark' ? '#1a1a1a' : '#f8f8f8'
+    const textPrimary = mode === 'dark' ? '#ffffff' : primaryColor
+    const textSecondary = mode === 'dark' ? '#a1a1a1' : secondaryColor
+
+    // Determine rounded corners
+    let rounded = 'medium'
+    if (isMinimal) rounded = 'subtle'
+    if (isPlayful || mood?.saturation === 'vibrant') rounded = 'full'
+
+    // Get density settings
+    const densitySettings = DENSITY_PRESETS[density] || DENSITY_PRESETS.normal
+
+    return {
+      colors: {
+        primary: textPrimary,
+        secondary: textSecondary,
+        accent: accentColor,
+        background: bgColor,
+        surface: surfaceColor
+      },
+      typography: {
+        headingFont: fontPair.heading,
+        bodyFont: fontPair.body,
+        fontPairId: fontPair.id,
+        scale: densitySettings.scale < 1 ? 'small' : densitySettings.scale > 1 ? 'large' : 'normal'
+      },
+      layout: {
+        maxWidth: '800px',
+        density,
+        alignment: 'center'
+      },
+      effects: {
+        animations: !isMinimal, // Minimal designs typically don't want animations
+        shadows: mode === 'light',
+        rounded
+      },
+      mode,
+      // Keep original inputs for reference
+      _meta: {
+        sourceColors: colors,
+        prompt,
+        mood,
+        fontPairId: fontPair.id
+      }
+    }
+  }
+
+  /**
+   * @deprecated Use generateDesignTokens instead. This function generates legacy styles.
+   * Legacy: Generate old-style design for backward compatibility with existing templates
+   */
   async function generateDesign({ colors, prompt, mood, suggestedGradient }) {
     isGenerating.value = true
     error.value = null
@@ -35,7 +178,10 @@ export function useDesignGenerator() {
     }
   }
 
-  // Local fallback generator for development/demo
+  /**
+   * @deprecated Use generateLocalTokens instead. This function generates legacy styles.
+   * Local fallback generator for development/demo
+   */
   function generateLocalDesign({ colors, prompt, mood, suggestedGradient }) {
     const primaryColor = colors[0] || '#3b82f6'
     const secondaryColor = colors[1] || colors[2] || adjustBrightness(primaryColor, -30)
@@ -175,15 +321,6 @@ export function useDesignGenerator() {
     }
   }
 
-  // Helper: check if color is light
-  function isLightColor(hex) {
-    const r = parseInt(hex.slice(1, 3), 16)
-    const g = parseInt(hex.slice(3, 5), 16)
-    const b = parseInt(hex.slice(5, 7), 16)
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-    return luminance > 0.5
-  }
-
   // Helper: adjust color brightness
   function adjustBrightness(hex, percent) {
     const num = parseInt(hex.slice(1), 16)
@@ -194,9 +331,42 @@ export function useDesignGenerator() {
     return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`
   }
 
+  // Convert design tokens to CSS custom properties
+  function tokensToCssVars(tokens) {
+    const densitySpacing = DENSITY_PRESETS[tokens.layout?.density || 'normal'].spacing
+    const radiusValue = ROUNDED_PRESETS[tokens.effects?.rounded || 'medium']
+
+    return {
+      '--color-primary': tokens.colors.primary,
+      '--color-secondary': tokens.colors.secondary,
+      '--color-accent': tokens.colors.accent,
+      '--color-background': tokens.colors.background,
+      '--color-surface': tokens.colors.surface,
+      '--font-heading': `'${tokens.typography.headingFont}', serif`,
+      '--font-body': `'${tokens.typography.bodyFont}', sans-serif`,
+      '--spacing': densitySpacing,
+      '--radius': radiusValue
+    }
+  }
+
+  // Get Google Fonts URL for the tokens
+  function getGoogleFontsUrl(tokens) {
+    const heading = tokens.typography.headingFont.replace(/\s+/g, '+')
+    const body = tokens.typography.bodyFont.replace(/\s+/g, '+')
+    if (heading === body) {
+      return `https://fonts.googleapis.com/css2?family=${heading}:wght@400;500;600;700;800&display=swap`
+    }
+    return `https://fonts.googleapis.com/css2?family=${heading}:wght@400;500;600;700;800&family=${body}:wght@400;500;600&display=swap`
+  }
+
   return {
     generateDesign,
+    generateDesignTokens,
+    generateLocalTokens,
+    tokensToCssVars,
+    getGoogleFontsUrl,
     isGenerating,
-    error
+    error,
+    FONT_PAIRS
   }
 }

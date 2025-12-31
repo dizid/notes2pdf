@@ -1,19 +1,22 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTemplates } from '../composables/useTemplates'
-import { useDesignGenerator } from '../composables/useDesignGenerator'
+import { useDesignGenerator, FONT_PAIRS, isLightColor } from '../composables/useDesignGenerator'
 import { useImageAnalysis } from '../composables/useImageAnalysis'
+import { useWebsiteAnalyzer } from '../composables/useWebsiteAnalyzer'
 import { useToast } from '../composables/useToast'
 import DynamicTemplate from '../templates/DynamicTemplate.vue'
 
 const router = useRouter()
 const { addTemplate } = useTemplates()
-const { generateDesign, isGenerating, error } = useDesignGenerator()
+const { generateDesign, generateDesignTokens, generateLocalTokens, isGenerating, error } = useDesignGenerator()
 const { analyzeImage, mergeAnalyses } = useImageAnalysis()
+const { analyzeWebsite, isAnalyzing: isAnalyzingWebsite, error: websiteError } = useWebsiteAnalyzer()
 const { showSuccess } = useToast()
 
 // Brand input state
+const websiteUrl = ref('')
 const brandColors = ref([])
 const brandImages = ref([])
 const stylePrompt = ref('')
@@ -22,9 +25,19 @@ const stylePrompt = ref('')
 const imageAnalyses = ref([]) // Store individual analyses
 const combinedAnalysis = ref(null) // Merged analysis from all images
 
+// Website analysis state
+const websiteAnalysis = ref(null)
+
 // Generated design state
 const generatedStyles = ref(null)
 const templateName = ref('')
+
+// Design tweak state
+const selectedFontPair = ref(null)
+const designDensity = ref('normal') // compact | normal | spacious
+const enableAnimations = ref(true)
+const enableShadows = ref(true)
+const designMode = ref('light') // light | dark
 
 // UI state
 const colorPickerRef = ref(null)
@@ -149,14 +162,69 @@ function saveTemplate() {
     return
   }
 
+  // Generate design tokens for the new template
+  const tokens = generateLocalTokens({
+    colors: brandColors.value,
+    prompt: stylePrompt.value,
+    mood: effectiveMood.value,
+    fontPairId: selectedFontPair.value,
+    density: designDensity.value
+  })
+
+  // Override with explicit user settings
+  tokens.mode = designMode.value
+  tokens.effects.animations = enableAnimations.value
+  tokens.effects.shadows = enableShadows.value
+
+  // Use brand colors for the design - don't override with plain dark/light!
+  // If user has brand colors, use them to create a colored background
+  if (brandColors.value.length > 0) {
+    const primaryBrand = brandColors.value[0]
+    const secondaryBrand = brandColors.value[1] || primaryBrand
+
+    if (designMode.value === 'dark') {
+      // Dark mode with brand accent: dark bg with brand color as accent
+      tokens.colors.background = '#111827'
+      tokens.colors.surface = '#1f2937'
+      tokens.colors.primary = '#ffffff'
+      tokens.colors.secondary = '#d1d5db'
+      tokens.colors.accent = primaryBrand
+    } else {
+      // Light mode: use brand color as background tint or keep it as accent
+      // For a more colorful design, use the brand color as background
+      tokens.colors.background = primaryBrand
+      tokens.colors.surface = secondaryBrand
+      // Determine text color based on background luminance
+      const isLightBg = isLightColor(primaryBrand)
+      tokens.colors.primary = isLightBg ? '#1a1a1a' : '#ffffff'
+      tokens.colors.secondary = isLightBg ? '#4b5563' : '#d1d5db'
+      tokens.colors.accent = brandColors.value[2] || secondaryBrand
+    }
+  } else {
+    // No brand colors - use standard dark/light theme
+    if (designMode.value === 'dark') {
+      tokens.colors.background = '#111827'
+      tokens.colors.surface = '#1f2937'
+      tokens.colors.primary = '#ffffff'
+      tokens.colors.secondary = '#d1d5db'
+    } else {
+      tokens.colors.background = '#ffffff'
+      tokens.colors.surface = '#f8f8f8'
+      tokens.colors.primary = '#1a1a1a'
+      tokens.colors.secondary = '#666666'
+    }
+  }
+
+  console.log('[Studio] Saving template with tokens:', tokens)
+
   const newId = addTemplate({
     name: templateName.value,
-    description: stylePrompt.value || 'Custom AI-generated design',
-    styles: generatedStyles.value
+    description: stylePrompt.value || 'Custom template',
+    tokens: tokens
   })
 
   showSuccess('Template saved!')
-  router.push({ path: '/', query: { template: newId } })
+  router.push({ path: '/app', query: { template: newId } })
 }
 
 function startOver() {
@@ -165,8 +233,62 @@ function startOver() {
 }
 
 const hasInput = computed(() =>
-  brandColors.value.length > 0 || stylePrompt.value.trim()
+  brandColors.value.length > 0 || stylePrompt.value.trim() || websiteUrl.value.trim()
 )
+
+// Analyze website URL
+async function handleAnalyzeWebsite() {
+  if (!websiteUrl.value.trim()) return
+
+  const result = await analyzeWebsite(websiteUrl.value)
+  if (result) {
+    websiteAnalysis.value = result
+
+    // Merge website colors with existing colors
+    if (result.colors?.length > 0) {
+      // Add unique colors
+      for (const color of result.colors) {
+        if (!brandColors.value.includes(color)) {
+          brandColors.value.push(color)
+        }
+      }
+      // Keep only first 6
+      brandColors.value = brandColors.value.slice(0, 6)
+    }
+
+    // Set font pair if detected
+    if (result.fonts?.heading) {
+      const matchingPair = FONT_PAIRS.find(
+        p => p.heading.toLowerCase() === result.fonts.heading.toLowerCase() ||
+             p.body.toLowerCase() === result.fonts.body?.toLowerCase()
+      )
+      if (matchingPair) {
+        selectedFontPair.value = matchingPair.id
+      }
+    }
+
+    // Set mood-based preferences
+    if (result.mood) {
+      designMode.value = result.mood.brightness === 'dark' ? 'dark' : 'light'
+    }
+
+    showSuccess('Website analyzed! Colors and fonts extracted.')
+  }
+}
+
+// Clear website analysis
+function clearWebsiteAnalysis() {
+  websiteUrl.value = ''
+  websiteAnalysis.value = null
+}
+
+// Get current effective mood (from website or image analysis)
+const effectiveMood = computed(() => {
+  return websiteAnalysis.value?.mood || combinedAnalysis.value?.mood || null
+})
+
+// Font pairs for dropdown
+const fontPairs = FONT_PAIRS
 </script>
 
 <template>
@@ -176,16 +298,27 @@ const hasInput = computed(() =>
       <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
         <div class="flex items-center gap-4">
           <button
-            @click="router.push('/')"
+            @click="router.push('/app')"
             class="text-gray-500 hover:text-gray-700"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           </button>
-          <h1 class="text-xl font-semibold">Design Studio</h1>
+          <h1 class="text-xl font-semibold">Template Builder</h1>
         </div>
-        <span class="text-sm text-gray-500">AI-powered template generator</span>
+        <div class="flex items-center gap-3">
+          <router-link
+            to="/app/studio/builder"
+            class="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition flex items-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+            </svg>
+            Visual Builder
+          </router-link>
+          <span class="text-sm text-gray-500">AI-powered</span>
+        </div>
       </div>
     </header>
 
@@ -193,6 +326,64 @@ const hasInput = computed(() =>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <!-- Left: Input Panel -->
         <div class="space-y-6">
+          <!-- Website URL Input -->
+          <div class="bg-white border border-gray-200 rounded-lg p-6">
+            <h2 class="text-lg font-medium mb-4">Website URL</h2>
+            <p class="text-sm text-gray-500 mb-4">
+              Enter your portfolio or website URL to extract colors and fonts
+            </p>
+
+            <div class="flex gap-2">
+              <input
+                v-model="websiteUrl"
+                type="url"
+                placeholder="https://yourwebsite.com"
+                class="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                @keyup.enter="handleAnalyzeWebsite"
+              />
+              <button
+                @click="handleAnalyzeWebsite"
+                :disabled="!websiteUrl.trim() || isAnalyzingWebsite"
+                :class="[
+                  'px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap',
+                  websiteUrl.trim() && !isAnalyzingWebsite
+                    ? 'bg-gray-900 text-white hover:bg-gray-800'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ]"
+              >
+                <span v-if="isAnalyzingWebsite" class="flex items-center gap-2">
+                  <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                  </svg>
+                  Analyzing...
+                </span>
+                <span v-else>Analyze</span>
+              </button>
+            </div>
+
+            <!-- Website analysis result -->
+            <div v-if="websiteAnalysis" class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-sm font-medium text-green-800">Website analyzed!</p>
+                  <p class="text-xs text-green-600 mt-1">
+                    Found {{ websiteAnalysis.colors?.length || 0 }} colors
+                    <span v-if="websiteAnalysis.fonts?.heading">, fonts: {{ websiteAnalysis.fonts.heading }}</span>
+                  </p>
+                </div>
+                <button @click="clearWebsiteAnalysis" class="text-green-600 hover:text-green-800">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Website error -->
+            <p v-if="websiteError" class="mt-2 text-sm text-red-600">{{ websiteError }}</p>
+          </div>
+
           <!-- Brand Images -->
           <div class="bg-white border border-gray-200 rounded-lg p-6">
             <h2 class="text-lg font-medium mb-4">Brand Assets</h2>
@@ -369,56 +560,160 @@ const hasInput = computed(() =>
             </div>
           </div>
 
+          <!-- Design Tweaks -->
+          <div class="bg-white border border-gray-200 rounded-lg p-6">
+            <h2 class="text-lg font-medium mb-4">Design Tweaks</h2>
+            <p class="text-sm text-gray-500 mb-4">
+              Fine-tune your design settings
+            </p>
+
+            <div class="space-y-4">
+              <!-- Font Pair -->
+              <div>
+                <label class="block text-sm text-gray-600 mb-2">Font Pair</label>
+                <select
+                  v-model="selectedFontPair"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                >
+                  <option :value="null">Auto (from analysis)</option>
+                  <option v-for="pair in fontPairs" :key="pair.id" :value="pair.id">
+                    {{ pair.name }} - {{ pair.heading }} / {{ pair.body }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Density -->
+              <div>
+                <label class="block text-sm text-gray-600 mb-2">Density</label>
+                <div class="flex gap-2">
+                  <button
+                    v-for="density in ['compact', 'normal', 'spacious']"
+                    :key="density"
+                    @click="designDensity = density"
+                    :class="[
+                      'flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors capitalize',
+                      designDensity === density
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ]"
+                  >
+                    {{ density }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Mode (Light/Dark) -->
+              <div>
+                <label class="block text-sm text-gray-600 mb-2">Mode</label>
+                <div class="flex gap-2">
+                  <button
+                    @click="designMode = 'light'"
+                    :class="[
+                      'flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2',
+                      designMode === 'light'
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ]"
+                  >
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0z" />
+                    </svg>
+                    Light
+                  </button>
+                  <button
+                    @click="designMode = 'dark'"
+                    :class="[
+                      'flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2',
+                      designMode === 'dark'
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ]"
+                  >
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clip-rule="evenodd" />
+                    </svg>
+                    Dark
+                  </button>
+                </div>
+              </div>
+
+              <!-- Effects -->
+              <div>
+                <label class="block text-sm text-gray-600 mb-2">Effects</label>
+                <div class="flex gap-4">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      v-model="enableAnimations"
+                      type="checkbox"
+                      class="w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                    />
+                    <span class="text-sm text-gray-700">Animations</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      v-model="enableShadows"
+                      type="checkbox"
+                      class="w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                    />
+                    <span class="text-sm text-gray-700">Shadows</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Style Prompt -->
           <div class="bg-white border border-gray-200 rounded-lg p-6">
             <h2 class="text-lg font-medium mb-4">Style Description</h2>
             <p class="text-sm text-gray-500 mb-4">
-              Describe the style, mood, or aesthetic you want
+              Describe the style, mood, or aesthetic you want (optional)
             </p>
 
             <textarea
               v-model="stylePrompt"
               placeholder="e.g., Modern and minimal with bold typography, suitable for a tech startup..."
-              rows="4"
+              rows="3"
               class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-none"
             ></textarea>
           </div>
 
-          <!-- Generate Button -->
-          <button
-            @click="handleGenerate"
-            :disabled="!hasInput || isGenerating"
-            :class="[
-              'w-full py-4 rounded-lg font-medium transition-colors',
-              hasInput && !isGenerating
-                ? 'bg-gray-900 text-white hover:bg-gray-800'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            ]"
-          >
-            <span v-if="isGenerating" class="flex items-center justify-center gap-2">
-              <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Generating Design...
-            </span>
-            <span v-else>Generate Design with AI</span>
-          </button>
-
-          <!-- Validation/Error message -->
-          <p v-if="validationMessage" class="text-amber-600 text-sm text-center animate-pulse">{{ validationMessage }}</p>
-          <p v-else-if="error" class="text-red-600 text-sm text-center">{{ error }}</p>
         </div>
 
         <!-- Right: Preview Panel -->
         <div class="space-y-6">
+          <!-- Generate Button - Above the fold -->
+          <div class="bg-white border border-gray-200 rounded-lg p-6">
+            <button
+              @click="handleGenerate"
+              :disabled="!hasInput || isGenerating"
+              :class="[
+                'w-full py-4 rounded-lg font-medium transition-colors text-lg',
+                hasInput && !isGenerating
+                  ? 'bg-gray-900 text-white hover:bg-gray-800'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              ]"
+            >
+              <span v-if="isGenerating" class="flex items-center justify-center gap-2">
+                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating Design...
+              </span>
+              <span v-else>Generate Design with AI</span>
+            </button>
+            <p v-if="validationMessage" class="text-amber-600 text-sm text-center mt-3 animate-pulse">{{ validationMessage }}</p>
+            <p v-else-if="error" class="text-red-600 text-sm text-center mt-3">{{ error }}</p>
+            <p v-else-if="!hasInput" class="text-gray-400 text-sm text-center mt-3">Add colors or describe your style to generate</p>
+          </div>
+
           <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h2 class="text-lg font-medium">Preview</h2>
               <span class="text-xs text-gray-400">A4 format</span>
             </div>
 
-            <div class="p-6 bg-gray-100 transition-all duration-500" :style="previewBackgroundStyle">
+            <div class="p-6 bg-gray-100">
               <div
                 class="bg-white shadow-lg mx-auto overflow-hidden"
                 style="width: 100%; max-width: 350px; aspect-ratio: 1/1.414;"

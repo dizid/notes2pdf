@@ -1,31 +1,62 @@
 <script setup>
+import { watch } from 'vue'
 import { useTemplates } from '../composables/useTemplates'
 import { useRouter } from 'vue-router'
 import { useToast } from '../composables/useToast'
+import { isDarkColor } from '../composables/useDesignGenerator'
 
 const model = defineModel()
 const router = useRouter()
 const { allTemplates, isCustomTemplate, removeTemplate } = useTemplates()
 const { showSuccess } = useToast()
 
+// Debug: log all templates when they change
+watch(allTemplates, (templates) => {
+  console.log('[DesignPicker] Templates updated:', templates.map(t => ({
+    id: t.id,
+    type: t.type,
+    hasTokens: !!t.tokens,
+    tokensBg: t.tokens?.colors?.background,
+    hasStyles: !!t.styles,
+    stylesBg: t.styles?.container?.backgroundColor
+  })))
+}, { immediate: true })
+
 function getPreviewClasses(template) {
+  // Built-in templates have predefined preview classes
   if (template.preview) {
     return template.preview.bg
   }
-  // Custom templates with gradient backgrounds don't need default classes
+
+  // Templates with tokens - use background from tokens (no Tailwind class needed)
+  if (template.tokens?.colors?.background) {
+    return ''
+  }
+
+  // Legacy: Custom templates with gradient backgrounds
   if (template.styles?.background?.type === 'gradient') {
     return ''
   }
-  // Default for custom templates without styles
-  return template.styles?.container?.backgroundColor
-    ? ''
-    : 'bg-gradient-to-br from-indigo-100 to-purple-200'
+
+  // Legacy: Custom templates with solid background
+  if (template.styles?.container?.backgroundColor) {
+    return ''
+  }
+
+  // Default fallback
+  return 'bg-gradient-to-br from-indigo-100 to-purple-200'
 }
 
 function getPreviewStyle(template) {
   const styles = {}
 
-  // Handle gradient backgrounds for custom templates
+  // Priority 1: Use tokens for background color (new system)
+  if (template.tokens?.colors?.background) {
+    styles.backgroundColor = template.tokens.colors.background
+    return styles
+  }
+
+  // Priority 2: Legacy gradient backgrounds
   if (template.styles?.background?.type === 'gradient' && template.styles.background.gradient) {
     const { type, angle, stops } = template.styles.background.gradient
     if (stops && stops.length >= 2) {
@@ -37,6 +68,7 @@ function getPreviewStyle(template) {
       }
     }
   } else if (template.styles?.container?.backgroundColor && template.styles.container.backgroundColor !== 'transparent') {
+    // Priority 3: Legacy solid background
     styles.backgroundColor = template.styles.container.backgroundColor
   }
 
@@ -47,12 +79,22 @@ function getTitleBarClasses(template) {
   if (template.preview) {
     return template.preview.titleBar
   }
+  // For dark backgrounds, use white bars
+  const bg = template.tokens?.colors?.background
+  if (template.tokens?.mode === 'dark' || isDarkColor(bg)) {
+    return 'bg-white w-2/3'
+  }
   return 'bg-gray-600 w-2/3'
 }
 
 function getSubtitleBarClasses(template) {
   if (template.preview) {
     return template.preview.subtitleBar
+  }
+  // For dark backgrounds, use light bars
+  const bg = template.tokens?.colors?.background
+  if (template.tokens?.mode === 'dark' || isDarkColor(bg)) {
+    return 'bg-white/60 w-1/2'
   }
   return 'bg-gray-400 w-1/2'
 }
@@ -74,7 +116,7 @@ function goToStudio() {
 <template>
   <div class="bg-white border border-gray-200 rounded-lg p-6">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-medium">Design</h2>
+      <h2 class="text-lg font-medium">Template</h2>
       <button
         @click="goToStudio"
         class="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
@@ -82,7 +124,7 @@ function goToStudio() {
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        Create Design
+        Create Template
       </button>
     </div>
 

@@ -1,135 +1,166 @@
-# Technical Foundation: Supabase + Stripe Preparation
+# Product Roadmap: Web-Native Design Export
 
-## Overview
-Prepare the Vue 3 app for auth, database, payments, and future enhancements using **Supabase** (auth + PostgreSQL) and **Stripe** foundation. KISS approach: minimal viable structure that works now and scales later.
+## Vision
+Transform notes2pdf from a "PDF generator" into a **web-native portfolio/deck creator** where users get beautiful, shareable web pages that match their personal brand - automatically extracted from their existing website/portfolio.
 
-## Key Decisions
-- **Supabase** for auth + database (one platform, generous free tier)
-- **Hybrid mode**: Guests use localStorage, logged-in users sync to Supabase
-- **Stripe foundation only**: Webhook handler + customer creation (no payment flows yet)
-- **Follow existing patterns**: Singleton composables with module-level refs
+**Core insight:** HTML export isn't just "PDF but online" - it's a completely different medium with animations, responsive design, hover effects, embedded fonts, and most importantly: **design can be pulled from the user's existing web presence**.
 
 ---
 
-## Phase 1: Supabase Setup
+## Phase 1: Basic HTML Export (MVP)
+*Get shareable URLs working*
 
-### 1.1 Install dependency
-```bash
-npm install @supabase/supabase-js
+### Features
+- "Share as Web Page" button alongside PDF export
+- Self-contained HTML with embedded styles + base64 images
+- Upload to Cloudflare R2
+- Return shareable URL (e.g., `pub-xxx.r2.dev/my-deck.html`)
+- 30-day expiration with cleanup
+
+### Technical
+- `useWebExport.js` composable - serialize DOM with computed styles
+- `upload-share.js` Netlify function - R2 upload with slug generation
+- `cleanup-expired.js` scheduled function - daily cleanup
+- Modal UI with URL + copy button
+
+---
+
+## Phase 2: Web-Native Templates
+*Design specifically for the web medium*
+
+### Why different from PDF?
+| PDF | Web |
+|-----|-----|
+| Fixed size (A4) | Responsive (mobile → desktop) |
+| Static | Animated, interactive |
+| System fonts only | Google Fonts, custom fonts |
+| Single page | Scrolling, sections |
+| Print-focused | Screen-focused, social sharing |
+
+### New capabilities
+- CSS animations (fade-in, slide-up on scroll)
+- Google Fonts integration
+- Open Graph meta tags for social previews
+- Responsive breakpoints (mobile-first)
+- Optional: View counter, social share buttons
+
+---
+
+## Phase 3: Website-Inspired Design (🔥 Differentiator)
+*"Make my deck look like my website"*
+
+### User Flow
+```
+1. User enters portfolio URL: https://janedoe.com
+2. System analyzes the website...
+3. Shows extracted brand kit:
+   - Colors: [#1a1a1a] [#e63946] [#f1f1f1]
+   - Fonts: "Playfair Display", "Inter"
+   - Mood: Minimal, elegant, high-contrast
+4. Generates deck matching their brand
 ```
 
-### 1.2 Create `src/lib/supabase.js`
-Simple client initialization using `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` env vars.
+### What we extract
 
-### 1.3 Database Schema (run in Supabase SQL Editor)
-```sql
--- profiles (extends auth.users)
--- designs (replaces localStorage history)
--- custom_templates (replaces localStorage templates)
--- usage (for future billing)
--- All with RLS policies: users only see own data
--- Trigger to auto-create profile on signup
+**From CSS (high confidence):**
+- Colors: CSS variables, background-color, color properties
+- Typography: Google Fonts links, font-family declarations
+- Spacing: margin/padding patterns, gap values
+
+**From visual analysis (AI-assisted):**
+- Mood: minimal vs maximalist, dark vs light
+- Layout style: lots of whitespace, centered, grid-based
+- Image treatment: rounded corners, shadows, borders
+
+### Technical approach
+```javascript
+// Hybrid: CSS parsing + AI analysis
+async function analyzeWebsite(url) {
+  // 1. Fetch HTML + CSS
+  const { html, css } = await fetchSiteAssets(url)
+
+  // 2. Parse CSS for exact values
+  const colors = extractColorsFromCSS(css)
+  const fonts = extractFontsFromHTML(html)
+
+  // 3. AI for mood/aesthetic
+  const mood = await claude.analyze({
+    prompt: "Analyze this website's design aesthetic",
+    data: { colors, fonts, htmlSample: html.slice(0, 5000) }
+  })
+
+  return { colors, fonts, mood }
+}
 ```
 
-### 1.4 Environment Variables
-- `.env.local` for local dev
-- Netlify dashboard for production
-- Keys: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-
 ---
 
-## Phase 2: Authentication
+## Phase 4: Design Tweaking UI
+*"AI got me 80% there, let me finish the last 20%"*
 
-### 2.1 Create `src/composables/useAuth.js`
-- `user`, `loading`, `isAuthenticated` state
-- `signUp()`, `signIn()`, `signInWithOAuth()`, `signOut()`
-- `init()` to set up auth listener
-
-### 2.2 Update `src/main.js`
-Initialize auth before mounting app.
-
-### 2.3 Update `src/router/index.js`
-- Add route guard for `meta: { requiresAuth: true }`
-- Add `/login` and `/account` routes
-
-### 2.4 Create `src/views/LoginView.vue`
-Simple email/password + OAuth login form.
-
----
-
-## Phase 3: Migrate Storage to Supabase
-
-### 3.1 Update `src/composables/useStorage.js`
-- If authenticated: use Supabase `designs` table
-- If guest: use localStorage (existing behavior)
-- Add `migrateLocalStorage()` to import guest data on login
-
-### 3.2 Update `src/composables/useTemplates.js`
-- If authenticated: use Supabase `custom_templates` table
-- If guest: use localStorage
-- Add `migrateLocalTemplates()`
-
----
-
-## Phase 4: Stripe Foundation
-
-### 4.1 Install dependency
-```bash
-npm install stripe
+### Real-time editor
+```
+┌─────────────────────┬─────────────────────────┐
+│                     │ Design Controls         │
+│   LIVE PREVIEW      │                         │
+│                     │ Colors                  │
+│   Updates as you    │ Primary   [■] #1a1a1a  │
+│   adjust controls   │ Accent    [■] #e63946  │
+│                     │                         │
+│                     │ Typography              │
+│                     │ Heading [Playfair    ▼] │
+│                     │ Body    [Inter       ▼] │
+│                     │                         │
+│                     │ Layout                  │
+│                     │ [Compact|●Normal|Wide]  │
+│                     │                         │
+│                     │ Effects                 │
+│                     │ [✓] Animations          │
+│                     │ [✓] Hover effects       │
+└─────────────────────┴─────────────────────────┘
 ```
 
-### 4.2 Create `netlify/functions/stripe-webhook.js`
-Handle events: `customer.created`, `checkout.session.completed`, subscription events.
+### Design tokens (CSS variables)
+```javascript
+const designTokens = {
+  colors: { primary: '#1a1a1a', accent: '#e63946', background: '#fff' },
+  typography: { headingFont: 'Playfair Display', bodyFont: 'Inter', baseSize: 18 },
+  spacing: { unit: 8, scale: 'normal' },  // compact, normal, spacious
+  effects: { animations: true, hoverEffects: true }
+}
+```
 
-### 4.3 Create `netlify/functions/create-stripe-customer.js`
-Lazily create Stripe customer linked to Supabase user.
-
-### 4.4 Create `src/composables/useStripe.js`
-- `ensureCustomer()` - creates Stripe customer if needed
-- Placeholder `createCheckoutSession()` for future use
-
-### 4.5 Environment Variables
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (server only)
-- `VITE_STRIPE_PUBLISHABLE_KEY` (frontend)
+All design controlled via CSS custom properties - tweaking just updates variables, instant preview.
 
 ---
 
-## Phase 5: UI Polish
+## Phase 5: Advanced Features (Future)
 
-### 5.1 Create `src/views/AccountView.vue`
-Simple profile page showing email, Stripe customer status.
-
-### 5.2 Update `src/components/TopNav.vue`
-Show login/logout button based on auth state.
-
----
-
-## Files to Create
-| File | Purpose |
-|------|---------|
-| `src/lib/supabase.js` | Supabase client |
-| `src/composables/useAuth.js` | Authentication |
-| `src/composables/useStripe.js` | Stripe integration |
-| `src/views/LoginView.vue` | Login/signup page |
-| `src/views/AccountView.vue` | User profile |
-| `netlify/functions/stripe-webhook.js` | Stripe webhooks |
-| `netlify/functions/create-stripe-customer.js` | Create Stripe customer |
-
-## Files to Modify
-| File | Changes |
-|------|---------|
-| `src/composables/useStorage.js` | Add Supabase support |
-| `src/composables/useTemplates.js` | Add Supabase support |
-| `src/router/index.js` | Add auth guards + new routes |
-| `src/main.js` | Initialize auth |
-| `src/components/TopNav.vue` | Auth-aware UI |
-| `package.json` | Add dependencies |
+- **Multi-section layouts** - Hero, content, gallery, footer
+- **Custom CSS injection** - Power users can add their own styles
+- **Template marketplace** - Share/browse community templates
+- **Analytics** - View counts, engagement
+- **Password protection** - Private links
+- **Embed codes** - iframe for Notion, LinkedIn
 
 ---
 
-## Implementation Order
-1. Supabase project setup + schema
-2. `supabase.js` + `useAuth.js` + login flow
-3. Update `useStorage.js` + `useTemplates.js`
-4. Stripe functions + `useStripe.js`
-5. UI updates (TopNav, AccountView)
+## Implementation Priority
+
+| Phase | Value | Effort | Priority |
+|-------|-------|--------|----------|
+| 1. Basic HTML Export | Medium | Medium | **Do first** |
+| 3. Website Analysis | **High** | High | **Do second** (differentiator!) |
+| 4. Design Tweaking | Medium | Medium | Do third |
+| 2. Web Templates | Medium | Medium | Alongside phase 3-4 |
+| 5. Advanced | Low-Med | Varies | Later |
+
+**Recommendation:** Phase 1 → Phase 3 → Phase 4. Website analysis is the killer feature that differentiates from Canva/Notion.
+
+---
+
+## Questions to Decide
+
+1. **Target users:** Photographers? Designers? All creatives?
+2. **Pricing hook:** Free = watermark + 30-day expiry, Paid = permanent + custom domain?
+3. **Mobile priority:** Should shared pages be mobile-first?

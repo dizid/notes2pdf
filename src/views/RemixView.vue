@@ -8,9 +8,6 @@ const router = useRouter()
 const isLoading = ref(true)
 const error = ref(null)
 
-// R2 public URL - should match what's configured in the backend
-const R2_PUBLIC_URL = 'https://pub-5e67290c6f034c6e862ab06edffab0d8.r2.dev'
-
 onMounted(async () => {
   const slug = route.params.slug
 
@@ -21,12 +18,12 @@ onMounted(async () => {
   }
 
   try {
-    // Fetch remix data from R2
-    const remixUrl = `${R2_PUBLIC_URL}/${slug}-remix.json`
-    const response = await fetch(remixUrl)
+    // Fetch remix data via proxy function (avoids CORS issues with R2)
+    const response = await fetch(`/.netlify/functions/get-remix?slug=${encodeURIComponent(slug)}`)
 
     if (!response.ok) {
-      throw new Error('Page not found')
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error || 'Page not found')
     }
 
     const remixData = await response.json()

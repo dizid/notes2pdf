@@ -215,8 +215,6 @@ function saveTemplate() {
     }
   }
 
-  console.log('[Studio] Saving template with tokens:', tokens)
-
   const newId = addTemplate({
     name: templateName.value,
     description: stylePrompt.value || 'Custom template',

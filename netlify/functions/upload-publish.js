@@ -4,13 +4,20 @@
 //   CLOUDFLARE_ACCOUNT_ID, R2_PUBLIC_URL
 
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import {
+  safeJsonParse,
+  validateString,
+  validateObject,
+  errorResponse,
+  LIMITS
+} from './lib/validate.js'
+
+// Max HTML size: 10MB
+const MAX_HTML_SIZE = 10 * 1024 * 1024
 
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    }
+    return errorResponse(405, 'Method not allowed')
   }
 
   // Check environment variables (use CLOUDFLARE_R2_ prefix to match .env)
@@ -24,24 +31,38 @@ export async function handler(event) {
 
   if (!CLOUDFLARE_R2_ACCESS_KEY_ID || !CLOUDFLARE_R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME || !CLOUDFLARE_ACCOUNT_ID) {
     console.error('Missing R2 environment variables')
-    return {
-      statusCode: 503,
-      body: JSON.stringify({
-        error: 'Cloud publishing is not configured',
-        code: 'R2_NOT_CONFIGURED'
-      })
+    return errorResponse(503, 'Cloud publishing is not configured', 'R2_NOT_CONFIGURED')
+  }
+
+  // Parse and validate request body
+  const { data: body, error: parseError } = safeJsonParse(event.body)
+  if (parseError) {
+    return errorResponse(400, parseError)
+  }
+
+  const { html, title, remixData } = body
+
+  // Validate HTML
+  const htmlError = validateString(html, 'html', { required: true, maxLength: MAX_HTML_SIZE })
+  if (htmlError) {
+    return errorResponse(400, htmlError)
+  }
+
+  // Validate title
+  const titleError = validateString(title, 'title', { maxLength: LIMITS.MAX_TITLE_LENGTH })
+  if (titleError) {
+    return errorResponse(400, titleError)
+  }
+
+  // Validate remixData if present
+  if (remixData !== undefined) {
+    const remixError = validateObject(remixData, 'remixData')
+    if (remixError) {
+      return errorResponse(400, remixError)
     }
   }
 
   try {
-    const { html, title, remixData } = JSON.parse(event.body)
-
-    if (!html) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'HTML content is required' })
-      }
-    }
 
     // Generate slug from title
     const slug = generateSlug(title || 'deck')

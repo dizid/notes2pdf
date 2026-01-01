@@ -1,26 +1,52 @@
 // Netlify function to generate designs using Claude API
 // Environment variable required: ANTHROPIC_API_KEY
 
+import {
+  safeJsonParse,
+  validateColors,
+  validateString,
+  validateObject,
+  errorResponse
+} from './lib/validate.js'
+import { fetchWithRetry } from './lib/retry.js'
+
 export async function handler(event) {
   // Only allow POST
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    }
+    return errorResponse(405, 'Method not allowed')
   }
 
   // Check for API key
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'API key not configured' })
-    }
+    return errorResponse(500, 'API key not configured')
+  }
+
+  // Parse and validate request body
+  const { data: body, error: parseError } = safeJsonParse(event.body)
+  if (parseError) {
+    return errorResponse(400, parseError)
+  }
+
+  const { colors, prompt, mood, suggestedGradient } = body
+
+  // Validate inputs
+  const colorsError = validateColors(colors)
+  if (colorsError) {
+    return errorResponse(400, colorsError)
+  }
+
+  const promptError = validateString(prompt, 'prompt', { maxLength: 2000 })
+  if (promptError) {
+    return errorResponse(400, promptError)
+  }
+
+  const moodError = validateObject(mood, 'mood')
+  if (moodError) {
+    return errorResponse(400, moodError)
   }
 
   try {
-    const { colors, prompt, mood, suggestedGradient } = JSON.parse(event.body)
 
     // Build the prompt for Claude
     const systemPrompt = `You are an expert design system generator creating SPECTACULAR, visually striking templates. Generate CSS style definitions for a PDF template based on brand colors, style descriptions, and mood analysis.
@@ -176,8 +202,8 @@ ${gradientContext}
 
 Generate the CSS styles JSON that TRULY EMBODIES this brand personality:`
 
-    // Call Claude API
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Call Claude API with retry logic
+    const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -195,7 +221,7 @@ Generate the CSS styles JSON that TRULY EMBODIES this brand personality:`
         ],
         system: systemPrompt
       })
-    })
+    }, { maxRetries: 2, baseDelay: 1000 })
 
     if (!response.ok) {
       const errorText = await response.text()

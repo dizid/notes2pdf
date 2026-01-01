@@ -1,5 +1,4 @@
 <script setup>
-import { watch } from 'vue'
 import { useTemplates } from '../composables/useTemplates'
 import { useRouter } from 'vue-router'
 import { useToast } from '../composables/useToast'
@@ -9,18 +8,6 @@ const model = defineModel()
 const router = useRouter()
 const { allTemplates, isCustomTemplate, removeTemplate } = useTemplates()
 const { showSuccess } = useToast()
-
-// Debug: log all templates when they change
-watch(allTemplates, (templates) => {
-  console.log('[DesignPicker] Templates updated:', templates.map(t => ({
-    id: t.id,
-    type: t.type,
-    hasTokens: !!t.tokens,
-    tokensBg: t.tokens?.colors?.background,
-    hasStyles: !!t.styles,
-    stylesBg: t.styles?.container?.backgroundColor
-  })))
-}, { immediate: true })
 
 function getPreviewClasses(template) {
   // Built-in templates have predefined preview classes

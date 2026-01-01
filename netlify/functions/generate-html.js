@@ -1,34 +1,54 @@
 // Netlify function to generate beautiful HTML using Claude API
 // Environment variable required: ANTHROPIC_API_KEY
 
+import {
+  safeJsonParse,
+  validateContent,
+  validateTokens,
+  validateString,
+  errorResponse
+} from './lib/validate.js'
+import { fetchWithRetry } from './lib/retry.js'
+
 export async function handler(event) {
   // Only allow POST
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    }
+    return errorResponse(405, 'Method not allowed')
   }
 
   // Check for API key
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'API key not configured' })
-    }
+    return errorResponse(500, 'API key not configured')
+  }
+
+  // Parse and validate request body
+  const { data: body, error: parseError } = safeJsonParse(event.body)
+  if (parseError) {
+    return errorResponse(400, parseError)
+  }
+
+  const { content, tokens, templateStyle } = body
+
+  // Validate content
+  const contentError = validateContent(content)
+  if (contentError) {
+    return errorResponse(400, contentError)
+  }
+
+  // Validate tokens
+  const tokensError = validateTokens(tokens)
+  if (tokensError) {
+    return errorResponse(400, tokensError)
+  }
+
+  // Validate templateStyle
+  const styleError = validateString(templateStyle, 'templateStyle', { maxLength: 100 })
+  if (styleError) {
+    return errorResponse(400, styleError)
   }
 
   try {
-    const { content, tokens, templateStyle } = JSON.parse(event.body)
-
-    // Validate content
-    if (!content || (!content.title && !content.text)) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Content with title or text is required' })
-      }
-    }
 
     // Build the prompt for Claude
     const systemPrompt = `You are a world-class web designer. Generate a beautiful, complete HTML page.
@@ -124,8 +144,8 @@ ${tokensContext}
 
 Remember: Output ONLY the complete HTML, starting with <!DOCTYPE html>`
 
-    // Call Claude API
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Call Claude API with retry logic
+    const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -143,7 +163,7 @@ Remember: Output ONLY the complete HTML, starting with <!DOCTYPE html>`
         ],
         system: systemPrompt
       })
-    })
+    }, { maxRetries: 2, baseDelay: 1000 })
 
     if (!response.ok) {
       const errorText = await response.text()

@@ -92,7 +92,7 @@ function updateContent(newContent) {
 // Handle brand URL from onboarding
 function handleBrandUrl(url) {
   // Could navigate to studio with URL or store for later
-  console.log('Brand URL for extraction:', url)
+  // Future: Navigate to studio with URL pre-filled
 }
 </script>
 

@@ -37,6 +37,16 @@ export async function handler(event) {
       }
     }
 
+    // SSRF Protection: Block internal/private IPs and localhost
+    const hostname = parsedUrl.hostname.toLowerCase()
+    if (isInternalHost(hostname)) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Internal URLs are not allowed' })
+      }
+    }
+
     // Fetch the website
     const response = await fetch(parsedUrl.href, {
       headers: {
@@ -155,4 +165,46 @@ function resolveUrl(href, baseUrl) {
     return baseUrl.origin + href
   }
   return new URL(href, baseUrl.href).href
+}
+
+/**
+ * Check if hostname is internal/private (SSRF protection)
+ * Blocks: localhost, 127.x.x.x, 10.x.x.x, 172.16-31.x.x, 192.168.x.x, etc.
+ */
+function isInternalHost(hostname) {
+  // Localhost variants
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+    return true
+  }
+
+  // Check for IP address patterns
+  const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (ipv4Match) {
+    const [, a, b] = ipv4Match.map(Number)
+
+    // 127.x.x.x (loopback)
+    if (a === 127) return true
+
+    // 10.x.x.x (private)
+    if (a === 10) return true
+
+    // 172.16.x.x - 172.31.x.x (private)
+    if (a === 172 && b >= 16 && b <= 31) return true
+
+    // 192.168.x.x (private)
+    if (a === 192 && b === 168) return true
+
+    // 169.254.x.x (link-local)
+    if (a === 169 && b === 254) return true
+
+    // 0.x.x.x (current network)
+    if (a === 0) return true
+  }
+
+  // Block .local, .internal, .localhost TLDs
+  if (hostname.endsWith('.local') || hostname.endsWith('.internal') || hostname.endsWith('.localhost')) {
+    return true
+  }
+
+  return false
 }

@@ -27,7 +27,6 @@ const isFullscreen = ref(false)
 // Generate HTML for iframe preview (WYSIWYG)
 const previewHtml = computed(() => {
   const tokens = activeTokens.value
-  console.log('[Preview] Rendering with tokens:', tokens?.colors?.background, 'mode:', tokens?.mode)
 
   // Check if we have any real content
   const hasRealContent = props.content?.title?.trim() || props.content?.text?.trim() || props.content?.images?.length

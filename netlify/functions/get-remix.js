@@ -25,7 +25,15 @@ export async function handler(event) {
     }
   }
 
-  const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-5e67290c6f034c6e862ab06edffab0d8.r2.dev'
+  const { R2_PUBLIC_URL } = process.env
+
+  if (!R2_PUBLIC_URL) {
+    console.error('Missing R2_PUBLIC_URL environment variable')
+    return {
+      statusCode: 503,
+      body: JSON.stringify({ error: 'Service not configured' })
+    }
+  }
 
   try {
     const remixUrl = `${R2_PUBLIC_URL}/${slug}-remix.json`

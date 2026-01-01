@@ -7,6 +7,171 @@ const { getGoogleFontsUrl } = useDesignGenerator()
  */
 export function useHtmlRenderer() {
   /**
+   * Generate shared CSS styles for both full document and export fragment
+   * @param {Object} tokens - Design tokens
+   * @param {Object} options - { scope: string, forExport: boolean }
+   */
+  function generateSharedStyles(tokens, options = {}) {
+    const { scope = '', forExport = false } = options
+    const s = scope ? `${scope} ` : ''
+
+    // For export, h1 doesn't have nowrap (no JS to resize)
+    const h1Extra = forExport ? '' : 'white-space: nowrap;'
+    const h1MaxFont = forExport ? '2.5rem' : '3.5rem'
+
+    return `
+    ${s}* { margin: 0; padding: 0; box-sizing: border-box; }
+
+    ${scope || 'body'} {
+      ${forExport ? '' : 'min-height: 100vh;'}
+      background: var(--color-background);
+      font-family: var(--font-body);
+      color: var(--color-secondary);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: var(--spacing);
+      padding-top: calc(var(--spacing) * 2);
+    }
+
+    ${s}.page {
+      position: relative;
+      max-width: 800px;
+      width: 100%;
+      background: var(--color-surface);
+      border-radius: var(--radius);
+      padding: calc(var(--spacing) * 2);
+      padding-bottom: calc(var(--spacing) * 2 + 1.5rem);
+      ${tokens.effects?.shadows ? 'box-shadow: 0 4px 24px rgba(0,0,0,0.08);' : ''}
+    }
+
+    ${s}h1 {
+      font-family: var(--font-heading);
+      color: var(--color-primary);
+      font-size: clamp(1.5rem, 5vw, ${h1MaxFont});
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+      ${h1Extra}
+      overflow: hidden;
+      max-width: 100%;
+    }
+
+    ${s}h2 {
+      font-family: var(--font-heading);
+      color: var(--color-secondary);
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      font-weight: 400;
+      margin-bottom: 2rem;
+    }
+
+    ${s}.metadata {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      font-size: 0.875rem;
+      color: var(--color-secondary);
+      opacity: 0.8;
+    }
+
+    ${s}.metadata-item {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    ${s}.metadata-label {
+      font-weight: 500;
+    }
+
+    ${s}.content {
+      font-size: 1.125rem;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    ${s}.content p {
+      margin-bottom: 1rem;
+    }
+
+    ${s}.content strong {
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+
+    ${s}.content ul, ${s}.content ol {
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    ${s}.content li {
+      margin-bottom: 0.5rem;
+    }
+
+    ${s}.gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    ${s}.gallery.layout-featured {
+      grid-template-columns: 1fr;
+    }
+
+    ${s}.gallery.layout-featured-grid {
+      grid-template-columns: 2fr 1fr;
+      grid-template-rows: 1fr 1fr;
+    }
+
+    ${s}.gallery.layout-featured-grid img:first-child {
+      grid-row: span 2;
+    }
+
+    ${s}.gallery.layout-side-by-side {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    ${s}.gallery img {
+      width: 100%;
+      border-radius: calc(var(--radius) / 2);
+      aspect-ratio: 4/3;
+      object-fit: cover;
+    }
+
+    ${s}.gallery.layout-featured img {
+      aspect-ratio: 16/9;
+    }
+
+    ${s}a {
+      color: var(--color-accent);
+      text-decoration: none;
+    }
+
+    ${forExport ? '' : `${s}a:hover {
+      text-decoration: underline;
+    }`}
+
+    ${s}.watermark {
+      position: absolute;
+      bottom: 0.75rem;
+      right: 1rem;
+      font-size: 0.625rem;
+      opacity: 0.4;
+      color: var(--color-secondary);
+    }
+
+    ${s}.watermark a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    ${forExport ? '' : `${s}.watermark a:hover {
+      opacity: 0.7;
+    }`}`
+  }
+
+  /**
    * Generate complete self-contained HTML from design tokens and content
    * @param {Object} tokens - Design tokens from useDesignGenerator
    * @param {Object} content - Content object with title, text, images, sections
@@ -18,6 +183,7 @@ export function useHtmlRenderer() {
     const cssVars = generateCssVars(tokens)
     const bodyContent = renderContent(content, tokens)
     const firstImageUrl = getFirstImageUrl(content)
+    const sharedStyles = generateSharedStyles(tokens, { scope: '', forExport: false })
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -34,138 +200,7 @@ export function useHtmlRenderer() {
     :root {
 ${cssVars}
     }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      min-height: 100vh;
-      background: var(--color-background);
-      font-family: var(--font-body);
-      color: var(--color-secondary);
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: var(--spacing);
-      padding-top: calc(var(--spacing) * 2);
-    }
-
-    .page {
-      position: relative;
-      max-width: 800px;
-      width: 100%;
-      background: var(--color-surface);
-      border-radius: var(--radius);
-      padding: calc(var(--spacing) * 2);
-      padding-bottom: calc(var(--spacing) * 2 + 1.5rem);
-      ${tokens.effects?.shadows ? 'box-shadow: 0 4px 24px rgba(0,0,0,0.08);' : ''}
-    }
-
-    h1 {
-      font-family: var(--font-heading);
-      color: var(--color-primary);
-      font-size: clamp(1.5rem, 5vw, 3.5rem);
-      line-height: 1.1;
-      margin-bottom: 1.5rem;
-      white-space: nowrap;
-      overflow: hidden;
-      max-width: 100%;
-    }
-
-    h2 {
-      font-family: var(--font-heading);
-      color: var(--color-secondary);
-      font-size: clamp(1rem, 2vw, 1.25rem);
-      font-weight: 400;
-      margin-bottom: 2rem;
-    }
-
-    .metadata {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-bottom: 2rem;
-      font-size: 0.875rem;
-      color: var(--color-secondary);
-      opacity: 0.8;
-    }
-
-    .metadata-item {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-    }
-
-    .metadata-label {
-      font-weight: 500;
-    }
-
-    .content {
-      font-size: 1.125rem;
-      line-height: 1.7;
-      margin-bottom: 2rem;
-    }
-
-    .content p {
-      margin-bottom: 1rem;
-    }
-
-    .content strong {
-      font-weight: 600;
-      color: var(--color-primary);
-    }
-
-    .content ul, .content ol {
-      margin-left: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .content li {
-      margin-bottom: 0.5rem;
-    }
-
-    .gallery {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-
-    .gallery.layout-featured {
-      grid-template-columns: 1fr;
-    }
-
-    .gallery.layout-featured-grid {
-      grid-template-columns: 2fr 1fr;
-      grid-template-rows: 1fr 1fr;
-    }
-
-    .gallery.layout-featured-grid img:first-child {
-      grid-row: span 2;
-    }
-
-    .gallery.layout-side-by-side {
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .gallery img {
-      width: 100%;
-      border-radius: calc(var(--radius) / 2);
-      aspect-ratio: 4/3;
-      object-fit: cover;
-    }
-
-    .gallery.layout-featured img {
-      aspect-ratio: 16/9;
-    }
-
-    a {
-      color: var(--color-accent);
-      text-decoration: none;
-    }
-
-    a:hover {
-      text-decoration: underline;
-    }
+${sharedStyles}
 
     ${tokens.effects?.animations ? `
     .animate-in {
@@ -177,24 +212,6 @@ ${cssVars}
       to { opacity: 1; transform: translateY(0); }
     }
     ` : ''}
-
-    .watermark {
-      position: absolute;
-      bottom: 0.75rem;
-      right: 1rem;
-      font-size: 0.625rem;
-      opacity: 0.4;
-      color: var(--color-secondary);
-    }
-
-    .watermark a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .watermark a:hover {
-      opacity: 0.7;
-    }
 
     @media (max-width: 600px) {
       .gallery {
@@ -455,153 +472,16 @@ ${!isPro ? `    <div class="watermark">
     const fontsUrl = getGoogleFontsUrl(tokens)
     const cssVars = generateCssVars(tokens)
     const bodyContent = renderContent(content, tokens)
+    const sharedStyles = generateSharedStyles(tokens, { scope: '.export-root', forExport: true })
 
-    // Return a self-contained fragment with inline styles
     return `
 <style>
   @import url('${fontsUrl}');
 
   .export-root {
 ${cssVars}
-    min-height: 100%;
-    background: var(--color-background);
-    font-family: var(--font-body);
-    color: var(--color-secondary);
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: var(--spacing);
-    padding-top: calc(var(--spacing) * 2);
   }
-
-  .export-root * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  .export-root .page {
-    position: relative;
-    max-width: 800px;
-    width: 100%;
-    background: var(--color-surface);
-    border-radius: var(--radius);
-    padding: calc(var(--spacing) * 2);
-    padding-bottom: calc(var(--spacing) * 2 + 1.5rem);
-    ${tokens.effects?.shadows ? 'box-shadow: 0 4px 24px rgba(0,0,0,0.08);' : ''}
-  }
-
-  .export-root h1 {
-    font-family: var(--font-heading);
-    color: var(--color-primary);
-    font-size: clamp(1.5rem, 5vw, 2.5rem);
-    line-height: 1.1;
-    margin-bottom: 1.5rem;
-    overflow: hidden;
-    max-width: 100%;
-  }
-
-  .export-root h2 {
-    font-family: var(--font-heading);
-    color: var(--color-secondary);
-    font-size: clamp(1rem, 2vw, 1.25rem);
-    font-weight: 400;
-    margin-bottom: 2rem;
-  }
-
-  .export-root .metadata {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    font-size: 0.875rem;
-    color: var(--color-secondary);
-    opacity: 0.8;
-  }
-
-  .export-root .metadata-item {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .export-root .metadata-label {
-    font-weight: 500;
-  }
-
-  .export-root .content {
-    font-size: 1.125rem;
-    line-height: 1.7;
-    margin-bottom: 2rem;
-  }
-
-  .export-root .content p {
-    margin-bottom: 1rem;
-  }
-
-  .export-root .content strong {
-    font-weight: 600;
-    color: var(--color-primary);
-  }
-
-  .export-root .content ul, .export-root .content ol {
-    margin-left: 1.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .export-root .content li {
-    margin-bottom: 0.5rem;
-  }
-
-  .export-root .gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-
-  .export-root .gallery.layout-featured {
-    grid-template-columns: 1fr;
-  }
-
-  .export-root .gallery.layout-featured-grid {
-    grid-template-columns: 2fr 1fr;
-    grid-template-rows: 1fr 1fr;
-  }
-
-  .export-root .gallery.layout-featured-grid img:first-child {
-    grid-row: span 2;
-  }
-
-  .export-root .gallery.layout-side-by-side {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .export-root .gallery img {
-    width: 100%;
-    border-radius: calc(var(--radius) / 2);
-    aspect-ratio: 4/3;
-    object-fit: cover;
-  }
-
-  .export-root .gallery.layout-featured img {
-    aspect-ratio: 16/9;
-  }
-
-  .export-root a {
-    color: var(--color-accent);
-    text-decoration: none;
-  }
-
-  .export-root .watermark {
-    position: absolute;
-    bottom: 0.75rem;
-    right: 1rem;
-    font-size: 0.625rem;
-    opacity: 0.4;
-    color: var(--color-secondary);
-  }
-
-  .export-root .watermark a {
-    color: inherit;
-    text-decoration: none;
-  }
+${sharedStyles}
 </style>
 <div class="export-root">
   <article class="page">

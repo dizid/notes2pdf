@@ -206,3 +206,138 @@ export function normalizeHex(hex) {
 
   return '#' + clean
 }
+
+/**
+ * Normalize any color format to hex
+ * @param {string} color - Color in hex, rgb, or hsl format
+ * @returns {string | null} Hex color or null if invalid
+ */
+export function normalizeColor(color) {
+  if (!color) return null
+  color = color.trim().toLowerCase()
+
+  if (color.startsWith('#')) {
+    return normalizeHex(color)
+  }
+  if (color.startsWith('rgb')) {
+    const match = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+    if (match) {
+      return rgbToHex(parseInt(match[1]), parseInt(match[2]), parseInt(match[3]))
+    }
+  }
+  if (color.startsWith('hsl')) {
+    const match = color.match(/hsla?\(\s*(\d+)\s*,\s*(\d+)%\s*,\s*(\d+)%/)
+    if (match) {
+      return hslToHex(parseInt(match[1]), parseInt(match[2]), parseInt(match[3]))
+    }
+  }
+  return null
+}
+
+/**
+ * Get color saturation (0-100)
+ * @param {string} hex - Hex color string
+ * @returns {number} Saturation percentage
+ */
+export function getColorSaturation(hex) {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return 0
+  const r = rgb.r / 255
+  const g = rgb.g / 255
+  const b = rgb.b / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  return max === 0 ? 0 : ((max - min) / max) * 100
+}
+
+/**
+ * Get perceived brightness (0-100)
+ * @param {string} hex - Hex color string
+ * @returns {number} Brightness percentage
+ */
+export function getColorBrightness(hex) {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return 50
+  return (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000 / 2.55
+}
+
+/**
+ * Get color temperature score
+ * @param {string} hex - Hex color string
+ * @returns {{ warm: number, cool: number }} Temperature scores
+ */
+export function getColorTemperatureScore(hex) {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return { warm: 0, cool: 0 }
+  const { r, g, b } = rgb
+  const warm = Math.max(0, r - b) + Math.max(0, (r + g) / 2 - b) / 2
+  const cool = Math.max(0, b - r) + Math.max(0, (b + g) / 2 - r) / 2
+  return { warm, cool }
+}
+
+/**
+ * Get simple color temperature classification
+ * @param {string} hex - Hex color string
+ * @returns {'warm' | 'cool' | 'neutral'} Temperature type
+ */
+export function getColorTemperature(hex) {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return 'neutral'
+  if (rgb.r > rgb.b + 30) return 'warm'
+  if (rgb.b > rgb.r + 30) return 'cool'
+  return 'neutral'
+}
+
+/**
+ * Calculate Euclidean distance between two colors
+ * @param {string} hex1 - First hex color
+ * @param {string} hex2 - Second hex color
+ * @returns {number} Distance (0-441.67 max)
+ */
+export function colorDistance(hex1, hex2) {
+  const rgb1 = hexToRgb(hex1)
+  const rgb2 = hexToRgb(hex2)
+  if (!rgb1 || !rgb2) return 0
+  return Math.sqrt(
+    (rgb1.r - rgb2.r) ** 2 +
+    (rgb1.g - rgb2.g) ** 2 +
+    (rgb1.b - rgb2.b) ** 2
+  )
+}
+
+/**
+ * Check if color is valid for brand use (not too dark/light/gray)
+ * @param {string} hex - Hex color string
+ * @returns {boolean} True if valid brand color
+ */
+export function isValidBrandColor(hex) {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return false
+
+  const brightness = (rgb.r + rgb.g + rgb.b) / 3
+  if (brightness < 15 || brightness > 245) return false
+
+  const max = Math.max(rgb.r, rgb.g, rgb.b)
+  const min = Math.min(rgb.r, rgb.g, rgb.b)
+  const saturation = max === 0 ? 0 : (max - min) / max * 100
+  if (saturation < 5 && brightness > 20 && brightness < 235) return false
+
+  return true
+}
+
+/**
+ * Remove visually similar colors from array
+ * @param {string[]} colors - Array of hex colors
+ * @param {number} threshold - Minimum distance (default 30)
+ * @returns {string[]} Deduplicated colors
+ */
+export function deduplicateSimilarColors(colors, threshold = 30) {
+  const result = []
+  for (const color of colors) {
+    const isSimilar = result.some(existing => colorDistance(existing, color) < threshold)
+    if (!isSimilar) {
+      result.push(color)
+    }
+  }
+  return result
+}

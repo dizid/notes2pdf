@@ -17,8 +17,8 @@ const plans = [
     period: 'forever',
     description: 'Perfect for trying out sizzle',
     features: [
-      '1 free publish',
-      'All templates',
+      '1 publish per month',
+      'Preset templates only',
       'PNG & PDF export',
       'sizzle branding on pages'
     ],
@@ -28,19 +28,21 @@ const plans = [
   {
     id: 'pro',
     name: 'Pro',
-    price: '$22',
-    period: 'one-time',
-    description: 'Unlimited access, forever',
-    badge: 'Lifetime',
+    price: '$9',
+    period: '/month',
+    annualPrice: '$69',
+    annualPeriod: '/year',
+    description: 'Everything you need to create',
+    badge: 'Most Popular',
     features: [
       'Unlimited publishes',
-      'All templates',
+      'AI brand extraction',
+      'Page view analytics',
       'All export formats',
-      'Social media sizes',
       'No sizzle branding',
       'Priority support'
     ],
-    cta: 'Get Lifetime Access',
+    cta: 'Start Pro Trial',
     popular: true
   }
 ]
@@ -97,8 +99,8 @@ async function handlePlanClick(plan) {
           Simple, transparent pricing
         </h1>
         <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-          Try free, then get lifetime access with a single payment.
-          No subscriptions, no recurring fees.
+          Start free, upgrade when you need more.
+          Cancel anytime.
         </p>
       </div>
 
@@ -187,10 +189,18 @@ async function handlePlanClick(plan) {
           </div>
 
           <div class="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 class="font-medium text-gray-900 mb-2">Is this really lifetime access?</h3>
+            <h3 class="font-medium text-gray-900 mb-2">What's included in page analytics?</h3>
             <p class="text-gray-600 text-sm">
-              Yes! Pay once, use forever. No subscriptions, no recurring charges.
-              You get unlimited publishes for as long as sizzle exists.
+              Pro users can see how many people viewed their published pages, where visitors came from,
+              and when pages were accessed. Great for tracking engagement.
+            </p>
+          </div>
+
+          <div class="bg-white rounded-lg p-6 border border-gray-200">
+            <h3 class="font-medium text-gray-900 mb-2">Can I cancel anytime?</h3>
+            <p class="text-gray-600 text-sm">
+              Yes! Cancel anytime from your account settings. You'll keep access until the end of your billing period.
+              No questions asked.
             </p>
           </div>
 

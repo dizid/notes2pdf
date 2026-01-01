@@ -203,51 +203,51 @@ export function detectArchetype(css, colors, mood) {
 
   // MINIMAL
   if (css.includes('border-radius: 0') || css.includes('border-radius:0')) scores.minimal += 2
-  if (mood.saturation.type === 'muted') scores.minimal += 2
-  if (mood.energy.type === 'calm') scores.minimal += 1
+  if (mood.saturation?.type === 'muted') scores.minimal += 2
+  if (mood.energy?.type === 'calm') scores.minimal += 1
   if (!css.includes('gradient')) scores.minimal += 1
   if (!css.includes('box-shadow') || css.includes('shadow-none')) scores.minimal += 1
 
   // BOLD
-  if (mood.saturation.type === 'vibrant') scores.bold += 2
-  if (mood.energy.type === 'energetic') scores.bold += 2
+  if (mood.saturation?.type === 'vibrant') scores.bold += 2
+  if (mood.energy?.type === 'energetic') scores.bold += 2
   if (css.includes('font-weight: 700') || css.includes('font-weight: 800') || css.includes('font-weight: 900')) scores.bold += 2
   if (css.includes('text-transform: uppercase')) scores.bold += 1
   if (colors && colors.length >= 2 && colorDistance(colors[0], colors[1]) > 150) scores.bold += 1
 
   // ELEGANT
   if (css.includes('serif') && !css.includes('sans-serif')) scores.elegant += 3
-  if (mood.formality.type === 'formal') scores.elegant += 2
+  if (mood.formality?.type === 'formal') scores.elegant += 2
   if (css.includes('letter-spacing') && css.includes('0.0')) scores.elegant += 1
-  if (mood.saturation.type === 'muted') scores.elegant += 1
+  if (mood.saturation?.type === 'muted') scores.elegant += 1
 
   // PLAYFUL
   if (css.includes('rounded-full') || css.includes('border-radius: 50%') || css.includes('border-radius: 9999')) scores.playful += 3
-  if (mood.saturation.type === 'vibrant') scores.playful += 1
-  if (mood.formality.type === 'casual') scores.playful += 2
-  if (mood.temperature.type === 'warm') scores.playful += 1
+  if (mood.saturation?.type === 'vibrant') scores.playful += 1
+  if (mood.formality?.type === 'casual') scores.playful += 2
+  if (mood.temperature?.type === 'warm') scores.playful += 1
 
   // TECH
   if (css.includes('monospace') || css.includes('SF Mono') || css.includes('Consolas')) scores.tech += 3
   if (css.includes('grid') || css.includes('flex')) scores.tech += 1
-  if (mood.temperature.type === 'cool') scores.tech += 1
+  if (mood.temperature?.type === 'cool') scores.tech += 1
   if (css.includes('rgb(') && css.includes('0,')) scores.tech += 1
 
   // ORGANIC
   if (css.includes('border-radius') && !css.includes('border-radius: 0')) scores.organic += 1
-  if (mood.temperature.type === 'warm') scores.organic += 1
+  if (mood.temperature?.type === 'warm') scores.organic += 1
   if (css.includes('gradient') && css.includes('radial')) scores.organic += 1
 
   // LUXURY
-  if (mood.brightness.type === 'dark') scores.luxury += 2
-  if (mood.saturation.type === 'muted') scores.luxury += 1
-  if (mood.formality.type === 'formal') scores.luxury += 2
+  if (mood.brightness?.type === 'dark') scores.luxury += 2
+  if (mood.saturation?.type === 'muted') scores.luxury += 1
+  if (mood.formality?.type === 'formal') scores.luxury += 2
   if (css.includes('gold') || css.includes('#d4af37') || css.includes('#c9a227')) scores.luxury += 3
 
   // FRIENDLY
   if (scores.playful > 0) scores.friendly += 1
-  if (mood.temperature.type === 'warm') scores.friendly += 2
-  if (mood.brightness.type === 'light') scores.friendly += 1
+  if (mood.temperature?.type === 'warm') scores.friendly += 2
+  if (mood.brightness?.type === 'light') scores.friendly += 1
   if (css.includes('Nunito') || css.includes('Poppins') || css.includes('rounded')) scores.friendly += 2
 
   let maxScore = 0
@@ -268,31 +268,31 @@ export function detectArchetype(css, colors, mood) {
 export function generateKeywords(mood) {
   const keywords = []
 
-  if (mood.temperature.type === 'warm') {
+  if (mood.temperature?.type === 'warm') {
     keywords.push('inviting', 'cozy')
-    if (mood.temperature.strength > 0.7) keywords.push('passionate')
-  } else if (mood.temperature.type === 'cool') {
+    if (mood.temperature?.strength > 0.7) keywords.push('passionate')
+  } else if (mood.temperature?.type === 'cool') {
     keywords.push('calm', 'professional')
-    if (mood.temperature.strength > 0.7) keywords.push('serene')
+    if (mood.temperature?.strength > 0.7) keywords.push('serene')
   }
 
-  if (mood.saturation.type === 'vibrant') {
+  if (mood.saturation?.type === 'vibrant') {
     keywords.push('dynamic', 'bold')
-    if (mood.saturation.strength > 0.7) keywords.push('striking')
-  } else if (mood.saturation.type === 'muted') {
+    if (mood.saturation?.strength > 0.7) keywords.push('striking')
+  } else if (mood.saturation?.type === 'muted') {
     keywords.push('subtle', 'refined')
-    if (mood.saturation.strength > 0.7) keywords.push('understated')
+    if (mood.saturation?.strength > 0.7) keywords.push('understated')
   }
 
-  if (mood.energy.type === 'energetic') {
+  if (mood.energy?.type === 'energetic') {
     keywords.push('lively', 'exciting')
-  } else if (mood.energy.type === 'calm') {
+  } else if (mood.energy?.type === 'calm') {
     keywords.push('peaceful', 'relaxed')
   }
 
-  if (mood.formality.type === 'formal') {
+  if (mood.formality?.type === 'formal') {
     keywords.push('sophisticated', 'polished')
-  } else if (mood.formality.type === 'casual') {
+  } else if (mood.formality?.type === 'casual') {
     keywords.push('friendly', 'approachable')
   }
 

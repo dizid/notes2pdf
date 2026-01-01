@@ -36,3 +36,41 @@ CREATE TABLE public.usage (
   CONSTRAINT usage_pkey PRIMARY KEY (user_id),
   CONSTRAINT usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
+
+-- Page view tracking for analytics
+CREATE TABLE public.page_views (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  slug text NOT NULL,
+  user_id uuid,
+  viewed_at timestamp with time zone DEFAULT now(),
+  referrer text,
+  country text,
+  CONSTRAINT page_views_pkey PRIMARY KEY (id)
+);
+CREATE INDEX idx_page_views_slug ON public.page_views(slug);
+CREATE INDEX idx_page_views_user_id ON public.page_views(user_id);
+
+-- Aggregated page stats (for faster queries)
+CREATE TABLE public.page_stats (
+  slug text NOT NULL,
+  user_id uuid,
+  total_views integer DEFAULT 0,
+  last_viewed_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT page_stats_pkey PRIMARY KEY (slug)
+);
+
+-- Brand kits for saving brand settings
+CREATE TABLE public.brand_kits (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  name text NOT NULL DEFAULT 'My Brand',
+  colors jsonb DEFAULT '[]',
+  fonts jsonb DEFAULT '{}',
+  mood jsonb DEFAULT '{}',
+  source_url text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT brand_kits_pkey PRIMARY KEY (id),
+  CONSTRAINT brand_kits_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);

@@ -1,12 +1,18 @@
-# Dizid - Features
+# Sizzle - Features
 
-Turn content into stunning, shareable HTML pages with AI-powered design.
+Transform raw notes into beautiful, shareable web pages and PDFs in seconds.
 
 ## Core Workflow
 1. **Input** - Add title, content, images
 2. **Design** - AI analyzes your brand or website
 3. **Customize** - Tweak colors, fonts, density
 4. **Share** - Get instant shareable URL
+
+## Content Input
+
+- **Title & Body** - Paste from any source (Notes app, ChatGPT, documents)
+- **Multi-Image Upload** - Support for multiple image formats with preview
+- **Direct Paste** - No formatting cleanup needed
 
 ## AI Assistance
 
@@ -20,26 +26,91 @@ Turn content into stunning, shareable HTML pages with AI-powered design.
 
 - 10 curated font pairs (Classic Elegant, Modern Minimal, Editorial Bold, etc.)
 - Real-time A4 preview with live updates
+- Custom color picker for brand colors
 - Light/dark mode toggle
-- Density control (compact → spacious)
+- Density control (compact → normal → spacious)
 - Effects: animations, shadows, rounded corners
 
 ## Templates
 
-- 3 built-in: Bold Editorial, Photo Spread, Clean Deck
+- **Bold Editorial** - Dark, high-impact magazine aesthetic with large serif typography
+- **Photo Spread** - Visual-first layout optimized for images
+- **Clean Deck** - Professional, minimal design for work-in-progress updates
 - Save custom templates from any design
 - Full design token control (colors, typography, layout, effects)
 
-## Export & Share
+## Export Options
 
-- One-click shareable URL (Cloudflare R2)
-- Self-contained HTML (no dependencies)
-- Open Graph meta for social previews
+### Formats
+- **PDF** - A4 format, print-ready
+- **PNG** - Original size or custom dimensions
+
+### Social Media Sizes
+- Open Graph (1200x630)
+- Instagram Post (1080x1080)
+- Instagram Story (1080x1920)
+- Twitter (1200x675)
+- LinkedIn (1200x627)
+- Facebook (1200x630)
+
+## Web Publishing
+
+- One-click shareable URL (Cloudflare R2 CDN)
+- Self-contained HTML (no external dependencies)
+- Open Graph meta tags for social previews
 - Print-safe CSS included
-- PDF export option
+
+### Remix Feature
+- "Create your own" viral CTA on published pages
+- Others can remix your page with pre-populated content
+- Incentivizes viral sharing
+
+## User Features
+
+### Export History
+- Local browser storage of all exports
+- Supabase sync for authenticated users
+- One-click access to previous pages
+- Clear individual items or all history
+
+### Authentication
+- Email/password authentication via Supabase
+- Optional: use the app anonymously without signup
+- User profiles with avatar and metadata
+
+## Pricing
+
+### Free Tier
+- 1 monthly publish limit
+- Sizzle branding on published pages
+
+### Pro Tier ($22 lifetime)
+- Unlimited publishes
+- No watermark/branding
 
 ## Privacy
 
 - Browser-based processing
-- No backend storage
+- No backend storage of content
 - AI features with local fallback
+
+## Routes
+
+| Path | Description |
+|------|-------------|
+| `/` | Landing page |
+| `/app` | Main create/export interface |
+| `/app/studio` | AI design generator studio |
+| `/app/studio/builder` | Advanced template customization |
+| `/app/history` | Export history viewer |
+| `/pricing` | Pricing page |
+| `/remix/:slug` | Remix share link |
+
+## Tech Stack
+
+- **Frontend**: Vue 3, Vite, Tailwind CSS v4
+- **Backend**: Netlify Functions (serverless)
+- **Database**: Supabase (auth + data)
+- **AI**: Anthropic Claude API
+- **CDN**: Cloudflare R2
+- **Payments**: Stripe

@@ -368,8 +368,13 @@ const fontPairs = FONT_PAIRS
                 <div>
                   <p class="text-sm font-medium text-green-800">Website analyzed!</p>
                   <p class="text-xs text-green-600 mt-1">
-                    Found {{ websiteAnalysis.colors?.length || 0 }} colors
-                    <span v-if="websiteAnalysis.fonts?.heading">, fonts: {{ websiteAnalysis.fonts.heading }}</span>
+                    <span class="capitalize font-medium">{{ websiteAnalysis.mood?.archetype || 'modern' }}</span> style
+                    <span class="mx-1 opacity-50">·</span>
+                    {{ websiteAnalysis.colors?.length || 0 }} colors
+                    <span v-if="websiteAnalysis.fonts?.heading">
+                      <span class="mx-1 opacity-50">·</span>
+                      {{ websiteAnalysis.fonts.heading }}
+                    </span>
                   </p>
                 </div>
                 <button @click="clearWebsiteAnalysis" class="text-green-600 hover:text-green-800">

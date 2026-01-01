@@ -2,9 +2,11 @@
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
+import { usePaywall } from '../composables/usePaywall'
 import AuthModal from './AuthModal.vue'
 
 const { user, isAuthenticated, displayName, avatarUrl, signOut, loading } = useAuth()
+const { isPro } = usePaywall()
 
 const showAuthModal = ref(false)
 const showUserMenu = ref(false)
@@ -45,6 +47,22 @@ async function handleSignOut() {
             active-class="text-gray-900 font-medium"
           >
             History
+          </RouterLink>
+          <RouterLink
+            to="/pricing"
+            class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            active-class="text-gray-900 font-medium"
+          >
+            Pricing
+          </RouterLink>
+
+          <!-- Upgrade button (only for non-pro users) -->
+          <RouterLink
+            v-if="!isPro"
+            to="/pricing"
+            class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Upgrade
           </RouterLink>
 
           <!-- Auth Section -->

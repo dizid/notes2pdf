@@ -1,12 +1,16 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { usePdfExport } from '../composables/usePdfExport'
 import { usePublish } from '../composables/usePublish'
 import { useStorage } from '../composables/useStorage'
 import { useToast } from '../composables/useToast'
 import { useTemplates } from '../composables/useTemplates'
+import { usePaywall } from '../composables/usePaywall'
 import { resolveTokens } from '../composables/useTokenResolver'
 import ExportModal from './ExportModal.vue'
+import PaywallModal from './PaywallModal.vue'
+import AuthModal from './AuthModal.vue'
 
 const props = defineProps({
   content: Object,
@@ -15,16 +19,23 @@ const props = defineProps({
   hasContent: Boolean
 })
 
+const router = useRouter()
 const { exportPdf, isExporting } = usePdfExport()
 const { publish, copyToClipboard, downloadHtml, reset: resetPublish, isPublishing, publishedUrl, publishError, publishErrorCode, generatedHtml } = usePublish()
 const { saveToHistory } = useStorage()
 const { showSuccess } = useToast()
 const { getTemplateById, builtInTemplates } = useTemplates()
+const { canPublish, incrementUsage, initUsage } = usePaywall()
 
 // Modal state
 const showPublishModal = ref(false)
 const showExportModal = ref(false)
+const showPaywallModal = ref(false)
+const showAuthModal = ref(false)
 const copied = ref(false)
+
+// Load usage on mount
+onMounted(() => initUsage())
 
 // Export filename
 const exportFilename = computed(() => {
@@ -70,6 +81,12 @@ async function handleExport() {
 async function handlePublish() {
   if (!isValid.value) return
 
+  // Check paywall before publishing
+  if (!canPublish.value) {
+    showPaywallModal.value = true
+    return
+  }
+
   resetPublish()
   copied.value = false
   showPublishModal.value = true
@@ -89,6 +106,9 @@ async function handlePublish() {
   await publish(tokens, contentForPublish, props.template)
 
   if (publishedUrl.value) {
+    // Increment usage after successful publish
+    await incrementUsage()
+
     saveToHistory({
       id: Date.now(),
       title: props.content.title || 'Untitled',
@@ -102,6 +122,17 @@ async function handlePublish() {
       }
     })
   }
+}
+
+// Handle auth flow from paywall
+function handleSignInFromPaywall() {
+  showPaywallModal.value = false
+  showAuthModal.value = true
+}
+
+function handleAuthenticated() {
+  showAuthModal.value = false
+  router.push('/pricing')
 }
 
 async function handleCopy() {
@@ -220,6 +251,21 @@ function handleExported({ format }) {
     element-id="pdf-preview"
     @close="showExportModal = false"
     @exported="handleExported"
+  />
+
+  <!-- Paywall Modal -->
+  <PaywallModal
+    :show="showPaywallModal"
+    @close="showPaywallModal = false"
+    @signIn="handleSignInFromPaywall"
+  />
+
+  <!-- Auth Modal (for signup after paywall) -->
+  <AuthModal
+    :show="showAuthModal"
+    initial-mode="signup"
+    @close="showAuthModal = false"
+    @authenticated="handleAuthenticated"
   />
 
   <!-- Publish Modal -->

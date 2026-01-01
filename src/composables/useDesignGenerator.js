@@ -32,6 +32,78 @@ const ROUNDED_PRESETS = {
   full: '16px'
 }
 
+/**
+ * Style archetype presets - bundles of visual decisions for each archetype
+ * These create distinct, recognizable aesthetics
+ */
+const STYLE_ARCHETYPES = {
+  minimal: {
+    effects: { shadows: false, animations: false, rounded: 'subtle' },
+    typography: { fontPairId: 'modern-minimal', headingWeight: 400, letterSpacing: '0.02em' },
+    gradient: { enabled: false },
+    contrast: 'low',
+    description: 'Clean, simple, focused'
+  },
+  bold: {
+    effects: { shadows: true, animations: true, rounded: 'medium' },
+    typography: { fontPairId: 'bold-display', headingWeight: 800, letterSpacing: '-0.02em' },
+    gradient: { enabled: true, intensity: 'high' },
+    contrast: 'high',
+    description: 'Impactful, dynamic, striking'
+  },
+  elegant: {
+    effects: { shadows: 'soft', animations: 'subtle', rounded: 'subtle' },
+    typography: { fontPairId: 'classic-elegant', headingWeight: 500, letterSpacing: '0.05em' },
+    gradient: { enabled: true, intensity: 'low' },
+    contrast: 'medium',
+    description: 'Sophisticated, luxurious, refined'
+  },
+  playful: {
+    effects: { shadows: true, animations: true, rounded: 'full' },
+    typography: { fontPairId: 'creative', headingWeight: 700, letterSpacing: '0' },
+    gradient: { enabled: true, intensity: 'medium' },
+    contrast: 'medium',
+    description: 'Fun, friendly, approachable'
+  },
+  tech: {
+    effects: { shadows: true, animations: true, rounded: 'medium' },
+    typography: { fontPairId: 'tech', headingWeight: 600, letterSpacing: '-0.01em' },
+    gradient: { enabled: true, intensity: 'medium' },
+    contrast: 'medium',
+    description: 'Innovative, modern, precise'
+  },
+  organic: {
+    effects: { shadows: 'soft', animations: 'subtle', rounded: 'medium' },
+    typography: { fontPairId: 'friendly', headingWeight: 500, letterSpacing: '0' },
+    gradient: { enabled: true, intensity: 'low', type: 'radial' },
+    contrast: 'low',
+    description: 'Natural, flowing, authentic'
+  },
+  luxury: {
+    effects: { shadows: 'soft', animations: 'subtle', rounded: 'none' },
+    typography: { fontPairId: 'literary', headingWeight: 400, letterSpacing: '0.08em' },
+    gradient: { enabled: true, intensity: 'low' },
+    contrast: 'high',
+    preferDark: true,
+    description: 'Premium, exclusive, opulent'
+  },
+  friendly: {
+    effects: { shadows: true, animations: true, rounded: 'full' },
+    typography: { fontPairId: 'friendly', headingWeight: 600, letterSpacing: '0' },
+    gradient: { enabled: false },
+    contrast: 'medium',
+    preferLight: true,
+    description: 'Warm, welcoming, trustworthy'
+  },
+  modern: {
+    effects: { shadows: true, animations: true, rounded: 'medium' },
+    typography: { fontPairId: 'geometric', headingWeight: 600, letterSpacing: '-0.01em' },
+    gradient: { enabled: true, intensity: 'medium' },
+    contrast: 'medium',
+    description: 'Contemporary, clean, versatile'
+  }
+}
+
 // Shared color utility functions
 export function isLightColor(hex) {
   if (!hex || typeof hex !== 'string') return true
@@ -77,22 +149,33 @@ export function useDesignGenerator() {
     const isElegant = /elegant|luxury|premium|sophisticated/i.test(prompt || '')
     const isModern = /modern|tech|startup/i.test(prompt || '')
     const isPlayful = /playful|fun|creative|vibrant/i.test(prompt || '')
-    const isDark = /dark|night|moody/i.test(prompt || '') || mood?.brightness === 'dark'
+    const isDarkPrompt = /dark|night|moody/i.test(prompt || '')
 
-    // Select font pair based on prompt or explicit selection
+    // Get archetype from mood analysis or derive from prompt
+    let archetype = mood?.archetype || 'modern'
+    if (isMinimal) archetype = 'minimal'
+    else if (isBold) archetype = 'bold'
+    else if (isElegant) archetype = 'elegant'
+    else if (isPlayful) archetype = 'playful'
+    else if (isModern) archetype = 'tech'
+
+    // Get archetype preset (fallback to modern if not found)
+    const archetypePreset = STYLE_ARCHETYPES[archetype] || STYLE_ARCHETYPES.modern
+
+    // Select font pair: explicit > archetype preset > prompt-based
     let fontPair = FONT_PAIRS.find(fp => fp.id === fontPairId)
+    if (!fontPair && archetypePreset.typography?.fontPairId) {
+      fontPair = FONT_PAIRS.find(fp => fp.id === archetypePreset.typography.fontPairId)
+    }
     if (!fontPair) {
-      // Auto-select based on prompt mood
-      if (isElegant) fontPair = FONT_PAIRS.find(fp => fp.id === 'classic-elegant')
-      else if (isBold) fontPair = FONT_PAIRS.find(fp => fp.id === 'bold-display')
-      else if (isModern) fontPair = FONT_PAIRS.find(fp => fp.id === 'tech')
-      else if (isPlayful) fontPair = FONT_PAIRS.find(fp => fp.id === 'creative')
-      else if (isMinimal) fontPair = FONT_PAIRS.find(fp => fp.id === 'modern-minimal')
-      else fontPair = FONT_PAIRS.find(fp => fp.id === 'modern-minimal')
+      fontPair = FONT_PAIRS.find(fp => fp.id === 'modern-minimal')
     }
 
-    // Determine mode (light/dark)
-    const mode = isDark ? 'dark' : 'light'
+    // Determine mode (light/dark) based on prompt, mood, and archetype preference
+    const brightnessType = typeof mood?.brightness === 'object' ? mood.brightness.type : mood?.brightness
+    const isDark = isDarkPrompt || brightnessType === 'dark' || archetypePreset.preferDark
+
+    const mode = isDark && !archetypePreset.preferLight ? 'dark' : 'light'
 
     // Calculate colors based on mode
     const bgColor = mode === 'dark' ? '#0f0f0f' : '#ffffff'
@@ -100,13 +183,32 @@ export function useDesignGenerator() {
     const textPrimary = mode === 'dark' ? '#ffffff' : primaryColor
     const textSecondary = mode === 'dark' ? '#a1a1a1' : secondaryColor
 
-    // Determine rounded corners
-    let rounded = 'medium'
-    if (isMinimal) rounded = 'subtle'
-    if (isPlayful || mood?.saturation === 'vibrant') rounded = 'full'
+    // Get rounded corners from archetype or mood
+    const saturationType = typeof mood?.saturation === 'object' ? mood.saturation.type : mood?.saturation
+    let rounded = archetypePreset.effects?.rounded || 'medium'
+    if (saturationType === 'vibrant' && !archetypePreset.effects?.rounded) {
+      rounded = 'full'
+    }
 
     // Get density settings
     const densitySettings = DENSITY_PRESETS[density] || DENSITY_PRESETS.normal
+
+    // Generate gradient token using archetype preferences
+    const gradient = generateGradientToken({
+      suggestedGradient,
+      colors,
+      mood,
+      isMinimal: archetype === 'minimal',
+      isBold: archetype === 'bold',
+      isPlayful: archetype === 'playful',
+      isElegant: archetype === 'elegant',
+      archetypeGradient: archetypePreset.gradient
+    })
+
+    // Determine effects from archetype preset
+    const archetypeEffects = archetypePreset.effects || {}
+    const animations = archetypeEffects.animations !== false && archetypeEffects.animations !== 'none'
+    const shadows = archetypeEffects.shadows !== false && (archetypeEffects.shadows === true || archetypeEffects.shadows === 'soft' || mode === 'light')
 
     return {
       colors: {
@@ -120,6 +222,8 @@ export function useDesignGenerator() {
         headingFont: fontPair.heading,
         bodyFont: fontPair.body,
         fontPairId: fontPair.id,
+        headingWeight: archetypePreset.typography?.headingWeight || 600,
+        letterSpacing: archetypePreset.typography?.letterSpacing || '0',
         scale: densitySettings.scale < 1 ? 'small' : densitySettings.scale > 1 ? 'large' : 'normal'
       },
       layout: {
@@ -128,19 +232,128 @@ export function useDesignGenerator() {
         alignment: 'center'
       },
       effects: {
-        animations: !isMinimal, // Minimal designs typically don't want animations
-        shadows: mode === 'light',
+        animations,
+        animationStyle: archetypeEffects.animations === 'subtle' ? 'subtle' : 'normal',
+        shadows,
+        shadowStyle: archetypeEffects.shadows === 'soft' ? 'soft' : 'normal',
         rounded
       },
+      gradient,
       mode,
+      archetype,
       // Keep original inputs for reference
       _meta: {
         sourceColors: colors,
         prompt,
         mood,
-        fontPairId: fontPair.id
+        fontPairId: fontPair.id,
+        archetypeDescription: archetypePreset.description
       }
     }
+  }
+
+  /**
+   * Generate gradient token from suggested gradient or colors
+   */
+  function generateGradientToken({ suggestedGradient, colors, mood, isMinimal, isBold, isPlayful, isElegant, archetypeGradient }) {
+    // Check if archetype explicitly disables gradients
+    if (archetypeGradient?.enabled === false || isMinimal) {
+      return { enabled: false }
+    }
+
+    // Use suggested gradient if provided
+    if (suggestedGradient && suggestedGradient.stops?.length >= 2) {
+      // Normalize stops to include position percentages
+      const normalizedStops = suggestedGradient.stops.map((stop, i, arr) => {
+        // If stop is object with color/position
+        if (typeof stop === 'object' && stop.color) {
+          const pos = stop.position !== undefined ? stop.position : Math.round((i / (arr.length - 1)) * 100)
+          return `${stop.color} ${pos}%`
+        }
+        // If stop already has percentage
+        if (typeof stop === 'string' && (stop.includes('%') || stop.includes('px'))) {
+          return stop
+        }
+        // Just a color - distribute evenly
+        const position = Math.round((i / (arr.length - 1)) * 100)
+        return `${stop} ${position}%`
+      })
+
+      // Use archetype's preferred gradient type if specified
+      const gradientType = archetypeGradient?.type || suggestedGradient.type || 'linear'
+
+      return {
+        enabled: true,
+        type: gradientType,
+        angle: suggestedGradient.angle || 145,
+        stops: normalizedStops,
+        intensity: archetypeGradient?.intensity || 'medium'
+      }
+    }
+
+    // Determine if we should generate gradient based on archetype and mood
+    const saturationType = typeof mood?.saturation === 'object' ? mood.saturation.type : mood?.saturation
+    const archetypeWantsGradient = archetypeGradient?.enabled === true
+    const shouldGenerateGradient = archetypeWantsGradient || isBold || isPlayful || saturationType === 'vibrant'
+
+    if (shouldGenerateGradient && colors?.length >= 2) {
+      // Determine angle based on mood (handle both object and string format)
+      const temperatureType = typeof mood?.temperature === 'object' ? mood.temperature.type : mood?.temperature
+      let angle = 145
+      if (temperatureType === 'warm') angle = 135
+      else if (temperatureType === 'cool') angle = 155
+
+      // Use archetype's preferred gradient type
+      const gradientType = archetypeGradient?.type || 'linear'
+
+      // Create gradient stops from available colors
+      const stops = []
+      stops.push(`${colors[0]} 0%`)
+
+      if (colors.length >= 3) {
+        stops.push(`${colors[1]} 50%`)
+        stops.push(`${colors[2]} 100%`)
+      } else {
+        stops.push(`${colors[1]} 100%`)
+      }
+
+      return {
+        enabled: true,
+        type: gradientType,
+        angle,
+        stops,
+        intensity: archetypeGradient?.intensity || 'medium'
+      }
+    }
+
+    // Elegant styles may get a subtle gradient
+    if (isElegant && colors?.length >= 2) {
+      return {
+        enabled: true,
+        type: 'linear',
+        angle: 180,
+        stops: [
+          `${adjustColorOpacity(colors[0], 0.9)} 0%`,
+          `${adjustColorOpacity(colors[1] || colors[0], 0.95)} 100%`
+        ],
+        intensity: 'low'
+      }
+    }
+
+    return { enabled: false }
+  }
+
+  /**
+   * Adjust color opacity (returns rgba string)
+   */
+  function adjustColorOpacity(hex, opacity) {
+    if (!hex || typeof hex !== 'string') return `rgba(0,0,0,${opacity})`
+    const clean = hex.replace('#', '')
+    if (clean.length !== 6) return hex
+    const r = parseInt(clean.slice(0, 2), 16)
+    const g = parseInt(clean.slice(2, 4), 16)
+    const b = parseInt(clean.slice(4, 6), 16)
+    return `rgba(${r},${g},${b},${opacity})`
   }
 
   /**

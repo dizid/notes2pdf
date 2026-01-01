@@ -104,23 +104,68 @@ DESIGN PRINCIPLES FOR SPECTACULAR RESULTS:
    - Colors should MATCH the brand imagery atmosphere
    - Typography should FEEL like the mood (bold for vibrant, elegant for muted)`
 
-    // Build mood context for the prompt
+    // Build rich narrative mood context for the prompt
     let moodContext = ''
     if (mood) {
+      // Handle both old format (strings) and new format (objects with type/strength)
+      const getType = (val) => typeof val === 'object' ? val.type : val
+      const getStrength = (val) => typeof val === 'object' ? val.strength : 0.5
+
+      const temperature = getType(mood.temperature) || 'neutral'
+      const saturation = getType(mood.saturation) || 'moderate'
+      const brightness = getType(mood.brightness) || 'balanced'
+      const energy = getType(mood.energy) || 'balanced'
+      const formality = getType(mood.formality) || 'neutral'
+      const archetype = mood.archetype || 'modern'
+      const keywords = mood.keywords || []
+
+      // Build strength descriptors
+      const tempStrength = getStrength(mood.temperature)
+      const satStrength = getStrength(mood.saturation)
+      const energyStrength = getStrength(mood.energy)
+
+      const tempDesc = tempStrength > 0.7 ? 'VERY ' : tempStrength > 0.5 ? '' : 'slightly '
+      const satDesc = satStrength > 0.7 ? 'HIGHLY ' : satStrength > 0.5 ? '' : 'subtly '
+      const energyDesc = energyStrength > 0.7 ? 'VERY ' : energyStrength > 0.5 ? '' : 'gently '
+
       moodContext = `
-Image mood analysis:
-- Temperature: ${mood.temperature} (warm colors vs cool colors)
-- Saturation: ${mood.saturation} (vibrant/colorful vs muted/subdued)
-- Brightness: ${mood.brightness} (light/airy vs dark/moody)`
+═══════════════════════════════════════════════════
+BRAND PERSONALITY ANALYSIS
+═══════════════════════════════════════════════════
+
+This brand has a ${tempDesc}${temperature.toUpperCase()}, ${satDesc}${saturation.toUpperCase()}, ${brightness.toUpperCase()} mood
+with ${energyDesc}${energy.toUpperCase()} energy and ${formality.toUpperCase()} formality.
+
+DETECTED ARCHETYPE: ${archetype.toUpperCase()}
+${keywords.length > 0 ? `\nEmotional keywords: ${keywords.join(', ')}` : ''}
+
+═══════════════════════════════════════════════════
+DESIGN DIRECTION
+═══════════════════════════════════════════════════
+
+Create a design that feels genuinely ${archetype.toUpperCase()}:
+${archetype === 'minimal' ? '- Use restrained colors, subtle typography, generous whitespace\n- Avoid gradients or make them very subtle\n- Focus on typography and spacing over decoration' : ''}
+${archetype === 'bold' ? '- Use saturated colors, heavy typography weights (700-900)\n- High contrast, impactful gradients with strong angles\n- Make it feel confident and attention-grabbing' : ''}
+${archetype === 'elegant' ? '- Use refined, muted colors with sophisticated gradients\n- Light to medium weights, generous letter-spacing\n- Serif or refined sans-serif typography' : ''}
+${archetype === 'playful' ? '- Use vibrant, saturated colors and fun gradients\n- Rounded corners, friendly typography\n- Make it feel approachable and joyful' : ''}
+${archetype === 'tech' ? '- Use cool colors, precise geometric feel\n- Modern sans-serif, tight letter-spacing\n- Clean gradients with subtle blue/purple tones' : ''}
+${archetype === 'luxury' ? '- Use deep, rich colors, often dark mode\n- Refined typography, generous spacing\n- Subtle gold/cream accents if appropriate' : ''}
+${archetype === 'friendly' ? '- Use warm, welcoming colors\n- Rounded elements, approachable typography\n- Light, airy feel with soft shadows' : ''}
+${archetype === 'organic' ? '- Use natural, earthy tones\n- Flowing gradients, soft edges\n- Typography that feels authentic, not corporate' : ''}
+${archetype === 'modern' ? '- Use contemporary color combinations\n- Clean typography, balanced spacing\n- Sophisticated but not stuffy' : ''}
+
+DO NOT make it feel: ${archetype === 'playful' ? 'corporate, sterile, minimalist' : archetype === 'minimal' ? 'flashy, busy, overwhelming' : archetype === 'luxury' ? 'cheap, casual, playful' : archetype === 'bold' ? 'subtle, muted, boring' : 'generic, bland, forgettable'}
+DO make it feel: ${keywords.slice(0, 3).join(', ') || 'distinctive, memorable, on-brand'}`
     }
 
     let gradientContext = ''
     if (suggestedGradient) {
+      const stopColors = suggestedGradient.stops.map(s => typeof s === 'object' ? s.color : s).join(' → ')
       gradientContext = `
-Suggested gradient from image analysis:
+Suggested gradient from brand analysis:
 - Angle: ${suggestedGradient.angle}deg
-- Colors: ${suggestedGradient.stops.map(s => s.color).join(' -> ')}
-(You may refine this gradient based on the style description)`
+- Colors: ${stopColors}
+(Refine this gradient to match the archetype - make it subtle for minimal, bold for playful, etc.)`
     }
 
     const userPrompt = `Brand colors: ${colors.length ? colors.join(', ') : 'Not provided, use neutral colors'}
@@ -129,7 +174,7 @@ Style description: ${prompt || 'Modern, clean, professional'}
 ${moodContext}
 ${gradientContext}
 
-Generate the CSS styles JSON with an atmospheric background that reflects the mood:`
+Generate the CSS styles JSON that TRULY EMBODIES this brand personality:`
 
     // Call Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {

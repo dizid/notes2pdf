@@ -250,6 +250,33 @@ ${!isPro ? `    <div class="watermark">
   }
 
   /**
+   * Generate gradient CSS from gradient token
+   */
+  function generateGradientCss(gradient) {
+    if (!gradient || !gradient.enabled || !gradient.stops || gradient.stops.length === 0) {
+      return null
+    }
+
+    const { type = 'linear', angle = 145, stops } = gradient
+
+    // Format stops - ensure they have position values
+    const formattedStops = stops.map((stop, i) => {
+      // If stop already has position (e.g., "#ff6b6b 0%"), use as-is
+      if (stop.includes('%') || stop.includes('px')) {
+        return stop
+      }
+      // Otherwise, distribute evenly
+      const position = Math.round((i / (stops.length - 1)) * 100)
+      return `${stop} ${position}%`
+    }).join(', ')
+
+    if (type === 'radial') {
+      return `radial-gradient(ellipse at center, ${formattedStops})`
+    }
+    return `linear-gradient(${angle}deg, ${formattedStops})`
+  }
+
+  /**
    * Generate CSS custom properties from design tokens
    */
   function generateCssVars(tokens) {
@@ -266,10 +293,15 @@ ${!isPro ? `    <div class="watermark">
       full: '16px'
     }[tokens.effects?.rounded || 'medium']
 
+    // Check for gradient background
+    const gradientCss = generateGradientCss(tokens.gradient)
+    const backgroundValue = gradientCss || tokens.colors.background
+
     return `      --color-primary: ${tokens.colors.primary};
       --color-secondary: ${tokens.colors.secondary};
       --color-accent: ${tokens.colors.accent};
-      --color-background: ${tokens.colors.background};
+      --color-background: ${backgroundValue};
+      --color-background-fallback: ${tokens.colors.background};
       --color-surface: ${tokens.colors.surface};
       --font-heading: '${tokens.typography.headingFont}', serif;
       --font-body: '${tokens.typography.bodyFont}', sans-serif;

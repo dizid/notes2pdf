@@ -34,7 +34,7 @@ export async function handler(event) {
   }
 
   try {
-    const { html, title } = JSON.parse(event.body)
+    const { html, title, remixData } = JSON.parse(event.body)
 
     if (!html) {
       return {
@@ -46,6 +46,22 @@ export async function handler(event) {
     // Generate slug from title
     const slug = generateSlug(title || 'deck')
 
+    // Inject "Create your own" CTA into the HTML before </body>
+    let finalHtml = html
+    if (remixData) {
+      const ctaHtml = `
+<!-- Sizzle Remix CTA -->
+<div style="position: fixed; bottom: 0; left: 0; right: 0; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 16px 20px; text-align: center; z-index: 9999; box-shadow: 0 -4px 20px rgba(0,0,0,0.3);">
+  <a href="https://sizzle.love/remix/${slug}" style="color: #fff; text-decoration: none; font-family: system-ui, -apple-system, sans-serif; font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px;">
+    <span style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">✨</span>
+    Create your own page in 60 seconds
+    <span style="opacity: 0.7;">→</span>
+  </a>
+</div>
+`
+      finalHtml = html.replace('</body>', `${ctaHtml}</body>`)
+    }
+
     // Create S3 client configured for R2
     const client = new S3Client({
       region: 'auto',
@@ -56,15 +72,27 @@ export async function handler(event) {
       }
     })
 
-    // Upload HTML file
+    // Upload HTML file (with CTA injected if remix data present)
     const key = `${slug}.html`
     await client.send(new PutObjectCommand({
       Bucket: R2_BUCKET_NAME,
       Key: key,
-      Body: html,
+      Body: finalHtml,
       ContentType: 'text/html; charset=utf-8',
       CacheControl: 'public, max-age=31536000' // 1 year cache
     }))
+
+    // Upload remix data JSON (for "Create your own" feature)
+    if (remixData) {
+      const remixKey = `${slug}-remix.json`
+      await client.send(new PutObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: remixKey,
+        Body: JSON.stringify(remixData),
+        ContentType: 'application/json',
+        CacheControl: 'public, max-age=31536000'
+      }))
+    }
 
     // Construct public URL
     const publicUrl = R2_PUBLIC_URL

@@ -31,6 +31,32 @@ const selectedTemplate = ref(route.query.template || 'bold-editorial')
 
 // Update if route changes (e.g., coming back from Studio)
 onMounted(async () => {
+  // Check for remix data (from "Create your own" viral link)
+  const remixDataStr = localStorage.getItem('sizzle-remix')
+  if (remixDataStr) {
+    try {
+      const remixData = JSON.parse(remixDataStr)
+      // Pre-populate content from remix
+      if (remixData.content) {
+        content.value = {
+          title: remixData.content.title || '',
+          text: remixData.content.text || '',
+          images: remixData.content.images || []
+        }
+      }
+      // Set template style
+      if (remixData.templateStyle) {
+        selectedTemplate.value = remixData.templateStyle
+      }
+      // Clear remix data after loading
+      localStorage.removeItem('sizzle-remix')
+      showSuccess('Page loaded! Edit and make it your own.')
+    } catch (err) {
+      console.error('Failed to parse remix data:', err)
+      localStorage.removeItem('sizzle-remix')
+    }
+  }
+
   if (route.query.template) {
     selectedTemplate.value = route.query.template
   }

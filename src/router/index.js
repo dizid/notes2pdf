@@ -8,6 +8,7 @@ import TemplateBuilderView from '../views/TemplateBuilderView.vue'
 import PricingView from '../views/PricingView.vue'
 import PrivacyView from '../views/PrivacyView.vue'
 import TermsView from '../views/TermsView.vue'
+import RemixView from '../views/RemixView.vue'
 
 const routes = [
   // Marketing
@@ -15,6 +16,9 @@ const routes = [
   { path: '/pricing', name: 'pricing', component: PricingView },
   { path: '/privacy', name: 'privacy', component: PrivacyView },
   { path: '/terms', name: 'terms', component: TermsView },
+
+  // Viral/sharing routes
+  { path: '/remix/:slug', name: 'remix', component: RemixView },
 
   // App routes
   { path: '/app', name: 'home', component: HomeView },

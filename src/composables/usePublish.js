@@ -110,11 +110,25 @@ export function usePublish() {
       // Store HTML for potential download fallback
       generatedHtml.value = html
 
-      // Upload to R2
+      // Build remix data for "Create your own" feature
+      // Skip images for now (can be too large for JSON storage)
+      const remixData = {
+        version: 1,
+        created: new Date().toISOString(),
+        content: {
+          title: content.title || '',
+          text: content.text || '',
+          images: [] // Images skipped for size - can add thumbnail support later
+        },
+        tokens: tokens || {},
+        templateStyle: templateStyle || 'bold-editorial'
+      }
+
+      // Upload to R2 (with remix data for viral CTA)
       const response = await fetch('/.netlify/functions/upload-publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html, title })
+        body: JSON.stringify({ html, title, remixData })
       })
 
       if (!response.ok) {

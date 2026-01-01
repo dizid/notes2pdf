@@ -15,7 +15,7 @@ const props = defineProps({
 })
 
 const { exportPdf, isExporting } = usePdfExport()
-const { publish, copyToClipboard, reset: resetPublish, isPublishing, publishedUrl, publishError } = usePublish()
+const { publish, copyToClipboard, downloadHtml, reset: resetPublish, isPublishing, publishedUrl, publishError, publishErrorCode, generatedHtml } = usePublish()
 const { saveToHistory } = useStorage()
 const { showSuccess } = useToast()
 const { getTemplateById, builtInTemplates } = useTemplates()
@@ -93,6 +93,15 @@ async function handleCopy() {
       showSuccess('Link copied!')
       setTimeout(() => { copied.value = false }, 2000)
     }
+  }
+}
+
+function handleDownloadHtml() {
+  const title = props.content.title || 'page'
+  const success = downloadHtml(title)
+  if (success) {
+    showSuccess('HTML downloaded!')
+    closeModal()
   }
 }
 
@@ -203,7 +212,27 @@ function closeModal() {
             <p class="mt-3 text-gray-600">Publishing your page...</p>
           </div>
 
-          <!-- Error state -->
+          <!-- Error state - Cloud not configured -->
+          <div v-else-if="publishErrorCode === 'R2_NOT_CONFIGURED' && generatedHtml" class="text-center py-4">
+            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-3">
+              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p class="text-gray-800 font-medium">Cloud publishing unavailable</p>
+            <p class="text-sm text-gray-500 mt-1">Download your page as an HTML file instead</p>
+            <button
+              @click="handleDownloadHtml"
+              class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2 mx-auto"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download HTML
+            </button>
+          </div>
+
+          <!-- Error state - Other errors -->
           <div v-else-if="publishError" class="text-center py-4">
             <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
               <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,12 +241,24 @@ function closeModal() {
             </div>
             <p class="text-red-600 font-medium">Publishing failed</p>
             <p class="text-sm text-gray-500 mt-1">{{ publishError }}</p>
-            <button
-              @click="handlePublish"
-              class="mt-4 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800"
-            >
-              Try again
-            </button>
+            <div class="flex gap-2 justify-center mt-4">
+              <button
+                v-if="generatedHtml"
+                @click="handleDownloadHtml"
+                class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-300 flex items-center gap-2"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download HTML
+              </button>
+              <button
+                @click="handlePublish"
+                class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800"
+              >
+                Try again
+              </button>
+            </div>
           </div>
 
           <!-- Success state -->

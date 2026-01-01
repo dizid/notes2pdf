@@ -8,6 +8,8 @@ export function usePublish() {
   const isPublishing = ref(false)
   const publishedUrl = ref(null)
   const publishError = ref(null)
+  const publishErrorCode = ref(null)
+  const generatedHtml = ref(null)
   const { renderToHtml } = useHtmlRenderer()
 
   /**
@@ -95,11 +97,16 @@ export function usePublish() {
     // Set publishing state immediately (before AI generation which takes 10+ sec)
     isPublishing.value = true
     publishError.value = null
+    publishErrorCode.value = null
     publishedUrl.value = null
+    generatedHtml.value = null
 
     try {
       const html = await generateHtml(tokens, content, templateStyle)
       const title = content.title || 'page'
+
+      // Store HTML for potential download fallback
+      generatedHtml.value = html
 
       // Upload to R2
       const response = await fetch('/.netlify/functions/upload-publish', {
@@ -110,6 +117,7 @@ export function usePublish() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
+        publishErrorCode.value = data.code || null
         throw new Error(data.error || `Upload failed: ${response.status}`)
       }
 
@@ -142,6 +150,35 @@ export function usePublish() {
   function reset() {
     publishedUrl.value = null
     publishError.value = null
+    publishErrorCode.value = null
+    generatedHtml.value = null
+  }
+
+  /**
+   * Download HTML as a file (fallback when cloud publishing unavailable)
+   * @param {string} title - Title for filename
+   */
+  function downloadHtml(title = 'page') {
+    if (!generatedHtml.value) return false
+
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 50) || 'page'
+
+    const blob = new Blob([generatedHtml.value], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${slug}.html`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    return true
   }
 
   return {
@@ -150,9 +187,12 @@ export function usePublish() {
     upload,
     publish,
     copyToClipboard,
+    downloadHtml,
     reset,
     isPublishing,
     publishedUrl,
-    publishError
+    publishError,
+    publishErrorCode,
+    generatedHtml
   }
 }

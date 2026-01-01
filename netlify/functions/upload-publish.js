@@ -25,8 +25,11 @@ export async function handler(event) {
   if (!CLOUDFLARE_R2_ACCESS_KEY_ID || !CLOUDFLARE_R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME || !CLOUDFLARE_ACCOUNT_ID) {
     console.error('Missing R2 environment variables')
     return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Server configuration error' })
+      statusCode: 503,
+      body: JSON.stringify({
+        error: 'Cloud publishing is not configured',
+        code: 'R2_NOT_CONFIGURED'
+      })
     }
   }
 

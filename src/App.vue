@@ -17,7 +17,11 @@ const isAppRoute = computed(() => route.path.startsWith('/app'))
       <router-view />
     </main>
     <footer v-if="isAppRoute" class="py-6 text-center text-sm text-gray-400 border-t border-gray-200">
-      Made with <span class="text-red-500">&hearts;</span> by <a href="https://dizid.com" target="_blank" class="text-gray-600 hover:text-gray-900">dizid.com</a>
+      <div>Made with <span class="text-red-500">&hearts;</span> by <a href="https://dizid.com" target="_blank" class="text-gray-600 hover:text-gray-900">dizid.com</a></div>
+      <div class="mt-2 space-x-4">
+        <router-link to="/privacy" class="hover:text-gray-600">Privacy</router-link>
+        <router-link to="/terms" class="hover:text-gray-600">Terms</router-link>
+      </div>
     </footer>
     <ToastContainer />
   </div>

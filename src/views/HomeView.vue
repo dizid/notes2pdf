@@ -1,15 +1,21 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import InputZone from '../components/InputZone.vue'
 import DesignPicker from '../components/DesignPicker.vue'
 import PreviewPane from '../components/PreviewPane.vue'
 import OutputActions from '../components/OutputActions.vue'
 import OnboardingModal from '../components/OnboardingModal.vue'
+import AuthModal from '../components/AuthModal.vue'
 import { useOnboarding } from '../composables/useOnboarding'
+import { usePaywall } from '../composables/usePaywall'
+import { useToast } from '../composables/useToast'
 
 const route = useRoute()
+const router = useRouter()
 const { shouldShowOnboarding, startOnboarding } = useOnboarding()
+const { refreshProStatus } = usePaywall()
+const { showSuccess } = useToast()
 
 const content = ref({
   title: '',
@@ -17,13 +23,30 @@ const content = ref({
   images: []
 })
 
+// Auth modal for ?auth=true query param
+const showAuthModal = ref(false)
+
 // Read template from URL query param, or default to bold-editorial
 const selectedTemplate = ref(route.query.template || 'bold-editorial')
 
 // Update if route changes (e.g., coming back from Studio)
-onMounted(() => {
+onMounted(async () => {
   if (route.query.template) {
     selectedTemplate.value = route.query.template
+  }
+
+  // Handle checkout success return from Stripe
+  if (route.query.checkout === 'success') {
+    await refreshProStatus()
+    showSuccess('Welcome to Pro! You now have unlimited publishes.')
+    // Clean up URL
+    router.replace({ path: route.path, query: {} })
+  }
+
+  // Handle auth trigger from pricing page
+  if (route.query.auth === 'true') {
+    showAuthModal.value = true
+    router.replace({ path: route.path, query: {} })
   }
 
   // Show onboarding for first-time users
@@ -70,5 +93,12 @@ function handleBrandUrl(url) {
 
     <!-- Onboarding Modal -->
     <OnboardingModal @brandUrl="handleBrandUrl" />
+
+    <!-- Auth Modal (triggered by ?auth=true) -->
+    <AuthModal
+      :show="showAuthModal"
+      @close="showAuthModal = false"
+      @authenticated="showAuthModal = false"
+    />
   </div>
 </template>

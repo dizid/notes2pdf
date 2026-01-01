@@ -12,7 +12,8 @@ export function useHtmlRenderer() {
    * @param {Object} content - Content object with title, text, images, sections
    * @returns {string} Complete HTML document
    */
-  function renderToHtml(tokens, content) {
+  function renderToHtml(tokens, content, options = {}) {
+    const { isPro = false } = options
     const fontsUrl = getGoogleFontsUrl(tokens)
     const cssVars = generateCssVars(tokens)
     const bodyContent = renderContent(content, tokens)
@@ -49,20 +50,25 @@ ${cssVars}
     }
 
     .page {
+      position: relative;
       max-width: 800px;
       width: 100%;
       background: var(--color-surface);
       border-radius: var(--radius);
       padding: calc(var(--spacing) * 2);
+      padding-bottom: calc(var(--spacing) * 2 + 1.5rem);
       ${tokens.effects?.shadows ? 'box-shadow: 0 4px 24px rgba(0,0,0,0.08);' : ''}
     }
 
     h1 {
       font-family: var(--font-heading);
       color: var(--color-primary);
-      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-size: clamp(1.5rem, 5vw, 3.5rem);
       line-height: 1.1;
       margin-bottom: 1.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      max-width: 100%;
     }
 
     h2 {
@@ -172,11 +178,22 @@ ${cssVars}
     }
     ` : ''}
 
-    footer {
-      margin-top: 3rem;
-      text-align: center;
-      font-size: 0.875rem;
-      opacity: 0.5;
+    .watermark {
+      position: absolute;
+      bottom: 0.75rem;
+      right: 1rem;
+      font-size: 0.625rem;
+      opacity: 0.4;
+      color: var(--color-secondary);
+    }
+
+    .watermark a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .watermark a:hover {
+      opacity: 0.7;
     }
 
     @media (max-width: 600px) {
@@ -202,10 +219,32 @@ ${cssVars}
 <body>
   <article class="page">
 ${bodyContent}
-    <footer>
-      Created with <a href="https://dizid.com">dizid.com</a>
-    </footer>
+${!isPro ? `    <div class="watermark">
+      <a href="https://sizzle.love">sizzle.love</a>
+    </div>` : ''}
   </article>
+  <script>
+    (function() {
+      const h1 = document.querySelector('h1');
+      if (!h1) return;
+      const page = document.querySelector('.page');
+      if (!page) return;
+
+      function fitTitle() {
+        const maxWidth = page.clientWidth - 64;
+        let fontSize = 56;
+        h1.style.fontSize = fontSize + 'px';
+
+        while (h1.scrollWidth > maxWidth && fontSize > 16) {
+          fontSize -= 2;
+          h1.style.fontSize = fontSize + 'px';
+        }
+      }
+
+      fitTitle();
+      window.addEventListener('resize', fitTitle);
+    })();
+  </script>
 </body>
 </html>`
   }
@@ -375,8 +414,176 @@ ${bodyContent}
       .replace(/'/g, '&#039;')
   }
 
+  /**
+   * Generate HTML fragment for export (not a full document - for direct div injection)
+   * This is used by html2canvas which cannot capture iframes
+   */
+  function renderForExport(tokens, content, options = {}) {
+    const { isPro = false } = options
+    const fontsUrl = getGoogleFontsUrl(tokens)
+    const cssVars = generateCssVars(tokens)
+    const bodyContent = renderContent(content, tokens)
+
+    // Return a self-contained fragment with inline styles
+    return `
+<style>
+  @import url('${fontsUrl}');
+
+  .export-root {
+${cssVars}
+    min-height: 100%;
+    background: var(--color-background);
+    font-family: var(--font-body);
+    color: var(--color-secondary);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: var(--spacing);
+    padding-top: calc(var(--spacing) * 2);
+  }
+
+  .export-root * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .export-root .page {
+    position: relative;
+    max-width: 800px;
+    width: 100%;
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    padding: calc(var(--spacing) * 2);
+    padding-bottom: calc(var(--spacing) * 2 + 1.5rem);
+    ${tokens.effects?.shadows ? 'box-shadow: 0 4px 24px rgba(0,0,0,0.08);' : ''}
+  }
+
+  .export-root h1 {
+    font-family: var(--font-heading);
+    color: var(--color-primary);
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+    max-width: 100%;
+  }
+
+  .export-root h2 {
+    font-family: var(--font-heading);
+    color: var(--color-secondary);
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    font-weight: 400;
+    margin-bottom: 2rem;
+  }
+
+  .export-root .metadata {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    font-size: 0.875rem;
+    color: var(--color-secondary);
+    opacity: 0.8;
+  }
+
+  .export-root .metadata-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .export-root .metadata-label {
+    font-weight: 500;
+  }
+
+  .export-root .content {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    margin-bottom: 2rem;
+  }
+
+  .export-root .content p {
+    margin-bottom: 1rem;
+  }
+
+  .export-root .content strong {
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+
+  .export-root .content ul, .export-root .content ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .export-root .content li {
+    margin-bottom: 0.5rem;
+  }
+
+  .export-root .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .export-root .gallery.layout-featured {
+    grid-template-columns: 1fr;
+  }
+
+  .export-root .gallery.layout-featured-grid {
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+
+  .export-root .gallery.layout-featured-grid img:first-child {
+    grid-row: span 2;
+  }
+
+  .export-root .gallery.layout-side-by-side {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .export-root .gallery img {
+    width: 100%;
+    border-radius: calc(var(--radius) / 2);
+    aspect-ratio: 4/3;
+    object-fit: cover;
+  }
+
+  .export-root .gallery.layout-featured img {
+    aspect-ratio: 16/9;
+  }
+
+  .export-root a {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .export-root .watermark {
+    position: absolute;
+    bottom: 0.75rem;
+    right: 1rem;
+    font-size: 0.625rem;
+    opacity: 0.4;
+    color: var(--color-secondary);
+  }
+
+  .export-root .watermark a {
+    color: inherit;
+    text-decoration: none;
+  }
+</style>
+<div class="export-root">
+  <article class="page">
+${bodyContent}
+${!isPro ? `    <div class="watermark">
+      <a href="https://sizzle.love">sizzle.love</a>
+    </div>` : ''}
+  </article>
+</div>`
+  }
+
   return {
     renderToHtml,
+    renderForExport,
     formatText,
     escapeHtml
   }

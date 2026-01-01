@@ -40,7 +40,7 @@ export async function handler(event) {
     // Fetch the website
     const response = await fetch(parsedUrl.href, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; DizidBot/1.0; +https://dizid.com)',
+        'User-Agent': 'Mozilla/5.0 (compatible; SizzleBot/1.0; +https://sizzle.love)',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5'
       },
@@ -66,7 +66,7 @@ export async function handler(event) {
     for (const cssUrl of linkedStylesheets.slice(0, 3)) {
       try {
         const cssResponse = await fetch(cssUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DizidBot/1.0)' }
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SizzleBot/1.0)' }
         })
         if (cssResponse.ok) {
           const cssText = await cssResponse.text()

@@ -3,7 +3,7 @@
     <!-- Nav -->
     <nav class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-sm border-b border-gray-100">
       <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-        <div class="text-xl font-semibold tracking-tight text-gray-900">dizid</div>
+        <div class="text-xl font-semibold tracking-tight text-gray-900">sizzle</div>
         <div class="flex items-center gap-4">
           <router-link to="/app" class="text-gray-600 hover:text-gray-900 text-sm font-medium transition">
             Log in
@@ -90,7 +90,7 @@
     <section class="py-20 px-6">
       <div class="max-w-5xl mx-auto">
         <h2 class="text-3xl font-normal text-center text-gray-900 mb-16">
-          What makes dizid different
+          What makes sizzle different
         </h2>
 
         <div class="grid md:grid-cols-3 gap-8">
@@ -235,8 +235,8 @@
         </div>
         <div class="flex items-center gap-6 text-sm text-gray-500">
           <router-link to="/app" class="hover:text-gray-900">App</router-link>
-          <a href="#" class="hover:text-gray-900">Privacy</a>
-          <a href="#" class="hover:text-gray-900">Terms</a>
+          <router-link to="/privacy" class="hover:text-gray-900">Privacy</router-link>
+          <router-link to="/terms" class="hover:text-gray-900">Terms</router-link>
         </div>
       </div>
     </footer>

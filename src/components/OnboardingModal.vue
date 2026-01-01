@@ -15,7 +15,7 @@ const websiteUrl = ref('')
 
 const steps = [
   {
-    title: "Welcome to dizid",
+    title: "Welcome to sizzle",
     description: "Create stunning, shareable pages from your content in seconds.",
     icon: "sparkles"
   },

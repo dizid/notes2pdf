@@ -2,22 +2,32 @@
 import { ref, onMounted } from 'vue'
 import { useStorage } from '../composables/useStorage'
 import { useToast } from '../composables/useToast'
+import { useAuth } from '../composables/useAuth'
 
 const { getHistory, deleteFromHistory, clearHistory } = useStorage()
 const { showSuccess } = useToast()
-const history = ref([])
+const { isAuthenticated } = useAuth()
 
-onMounted(() => {
-  history.value = getHistory()
+const history = ref([])
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    history.value = await getHistory()
+  } catch (err) {
+    console.error('Failed to load history:', err)
+  } finally {
+    loading.value = false
+  }
 })
 
-function handleDelete(id) {
-  deleteFromHistory(id)
-  history.value = getHistory()
+async function handleDelete(id) {
+  await deleteFromHistory(id)
+  history.value = await getHistory()
 }
 
-function handleClear() {
-  clearHistory()
+async function handleClear() {
+  await clearHistory()
   history.value = []
   showSuccess('History cleared')
 }
@@ -31,6 +41,11 @@ function formatDate(timestamp) {
     minute: '2-digit'
   })
 }
+
+function copyUrl(url) {
+  navigator.clipboard.writeText(url)
+  showSuccess('URL copied!')
+}
 </script>
 
 <template>
@@ -38,7 +53,12 @@ function formatDate(timestamp) {
     <header class="mb-8 flex items-center justify-between">
       <div>
         <h1 class="text-3xl mb-2">History</h1>
-        <p class="text-gray-500">Your previously exported decks</p>
+        <p class="text-gray-500">
+          Your previously exported pages
+          <span v-if="isAuthenticated" class="text-green-600 text-sm ml-2">
+            (synced)
+          </span>
+        </p>
       </div>
       <button
         v-if="history.length > 0"
@@ -49,13 +69,21 @@ function formatDate(timestamp) {
       </button>
     </header>
 
-    <div v-if="history.length === 0" class="text-center py-16">
+    <!-- Loading state -->
+    <div v-if="loading" class="text-center py-16">
+      <div class="inline-block w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+      <p class="text-gray-400 mt-4">Loading history...</p>
+    </div>
+
+    <!-- Empty state -->
+    <div v-else-if="history.length === 0" class="text-center py-16">
       <p class="text-gray-400 text-lg">No exports yet</p>
       <RouterLink to="/" class="text-sm text-gray-600 hover:text-gray-900 mt-2 inline-block">
-        Create your first deck
+        Create your first page
       </RouterLink>
     </div>
 
+    <!-- History list -->
     <div v-else class="space-y-4">
       <article
         v-for="item in history"
@@ -73,6 +101,27 @@ function formatDate(timestamp) {
             <p class="text-sm text-gray-400 mt-2">
               Template: {{ item.template }}
             </p>
+
+            <!-- Published URL -->
+            <div v-if="item.publishedUrl" class="mt-3 flex items-center gap-2">
+              <a
+                :href="item.publishedUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-sm text-blue-600 hover:text-blue-700 truncate max-w-xs"
+              >
+                {{ item.publishedUrl }}
+              </a>
+              <button
+                @click="copyUrl(item.publishedUrl)"
+                class="text-gray-400 hover:text-gray-600 shrink-0"
+                title="Copy URL"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
           </div>
           <button
             @click="handleDelete(item.id)"

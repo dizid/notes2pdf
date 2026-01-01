@@ -75,11 +75,18 @@ describe('useHtmlRenderer', () => {
       expect(html).toContain('--font-heading')
     })
 
-    it('should include footer with dizid.com link', () => {
+    it('should include watermark with sizzle.love link', () => {
       const html = renderer.renderToHtml(sampleTokens, { title: 'Test' })
 
-      expect(html).toContain('dizid.com')
-      expect(html).toContain('Created with')
+      expect(html).toContain('sizzle.love')
+      expect(html).toContain('watermark')
+    })
+
+    it('should hide watermark for pro users', () => {
+      const html = renderer.renderToHtml(sampleTokens, { title: 'Test' }, { isPro: true })
+
+      expect(html).not.toContain('class="watermark"')
+      expect(html).not.toContain('sizzle.love')
     })
   })
 

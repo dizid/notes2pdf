@@ -1,6 +1,6 @@
 import { ref, readonly } from 'vue'
 
-const STORAGE_KEY = 'dizid_onboarded'
+const STORAGE_KEY = 'sizzle_onboarded'
 
 // Shared state
 const isOnboarded = ref(false)

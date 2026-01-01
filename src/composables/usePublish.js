@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { useHtmlRenderer } from './useHtmlRenderer'
+import { usePaywall } from './usePaywall'
 
 /**
  * Composable for publishing HTML content to Cloudflare R2
@@ -11,6 +12,7 @@ export function usePublish() {
   const publishErrorCode = ref(null)
   const generatedHtml = ref(null)
   const { renderToHtml } = useHtmlRenderer()
+  const { isPro } = usePaywall()
 
   /**
    * Generate beautiful HTML using AI (Claude API)
@@ -39,10 +41,10 @@ export function usePublish() {
 
       // Fall back to local renderer
       console.log('AI generation failed, using local renderer')
-      return renderToHtml(tokens, content)
+      return renderToHtml(tokens, content, { isPro: isPro.value })
     } catch (err) {
       console.warn('AI HTML generation error, falling back to local:', err.message)
-      return renderToHtml(tokens, content)
+      return renderToHtml(tokens, content, { isPro: isPro.value })
     }
   }
 
@@ -50,7 +52,7 @@ export function usePublish() {
    * Generate HTML locally (synchronous fallback)
    */
   function generateHtmlLocal(tokens, content) {
-    return renderToHtml(tokens, content)
+    return renderToHtml(tokens, content, { isPro: isPro.value })
   }
 
   /**

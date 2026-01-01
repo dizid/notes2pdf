@@ -5,10 +5,16 @@ import HistoryView from '../views/HistoryView.vue'
 import AboutView from '../views/AboutView.vue'
 import StudioView from '../views/StudioView.vue'
 import TemplateBuilderView from '../views/TemplateBuilderView.vue'
+import PricingView from '../views/PricingView.vue'
+import PrivacyView from '../views/PrivacyView.vue'
+import TermsView from '../views/TermsView.vue'
 
 const routes = [
   // Marketing
   { path: '/', name: 'landing', component: LandingView },
+  { path: '/pricing', name: 'pricing', component: PricingView },
+  { path: '/privacy', name: 'privacy', component: PrivacyView },
+  { path: '/terms', name: 'terms', component: TermsView },
 
   // App routes
   { path: '/app', name: 'home', component: HomeView },

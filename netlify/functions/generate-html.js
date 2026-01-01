@@ -40,7 +40,7 @@ OUTPUT REQUIREMENTS:
 4. Use Google Fonts CDN for typography
 5. Mobile responsive design
 6. Include subtle animations and transitions
-7. Add footer: "Created with <a href="https://dizid.com">dizid.com</a>"
+7. Add footer: "Created with <a href="https://sizzle.love">sizzle.love</a>"
 
 DESIGN PRINCIPLES:
 - Create visual hierarchy: large impactful title, readable body text

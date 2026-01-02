@@ -36,8 +36,28 @@ export function useDesignGenerator() {
 
   /**
    * Generate design tokens locally
+   * @param {Object} options
+   * @param {Array} options.colors - Brand colors
+   * @param {string} options.prompt - Style prompt
+   * @param {Object} options.mood - Mood analysis
+   * @param {Object} options.suggestedGradient - Suggested gradient from image analysis
+   * @param {string} options.fontPairId - Font pair ID
+   * @param {string} options.density - Layout density
+   * @param {Object} options.extractedGradient - Gradient extracted from vision analysis
+   * @param {Object} options.extractedEffects - Effects extracted from vision analysis
+   * @param {Object} options.extractedColorTokens - Color tokens extracted from vision analysis
    */
-  function generateLocalTokens({ colors, prompt, mood, suggestedGradient, fontPairId, density = 'normal' }) {
+  function generateLocalTokens({
+    colors,
+    prompt,
+    mood,
+    suggestedGradient,
+    fontPairId,
+    density = 'normal',
+    extractedGradient,
+    extractedEffects,
+    extractedColorTokens
+  }) {
     const primaryColor = colors?.[0] || '#1a1a1a'
     const secondaryColor = colors?.[1] || '#666666'
     const accentColor = colors?.[2] || '#e63946'
@@ -64,28 +84,52 @@ export function useDesignGenerator() {
     const textPrimary = mode === 'dark' ? '#ffffff' : primaryColor
     const textSecondary = mode === 'dark' ? '#a1a1a1' : secondaryColor
 
-    // Get rounded corners from archetype or mood
+    // Get rounded corners - prefer extracted effects, then archetype, then mood
     const saturationType = typeof mood?.saturation === 'object' ? mood.saturation.type : mood?.saturation
-    let rounded = archetypePreset.effects?.rounded || 'medium'
-    if (saturationType === 'vibrant' && !archetypePreset.effects?.rounded) {
+    let rounded = extractedEffects?.borderRadius || archetypePreset.effects?.rounded || 'medium'
+    if (saturationType === 'vibrant' && !archetypePreset.effects?.rounded && !extractedEffects?.borderRadius) {
       rounded = 'full'
     }
 
     const densitySettings = DENSITY_PRESETS[density] || DENSITY_PRESETS.normal
 
-    // Generate gradient token
-    const gradient = generateGradientToken({
-      suggestedGradient,
-      colors,
-      mood,
-      archetype,
-      archetypeGradient: archetypePreset.gradient
-    })
+    // Generate gradient token - prefer extracted gradient from vision analysis
+    let gradient
+    if (extractedGradient?.detected) {
+      // Use vision-extracted gradient directly
+      gradient = {
+        enabled: true,
+        type: extractedGradient.type || 'linear',
+        angle: extractedGradient.angle || 135,
+        stops: extractedGradient.colors.map((c, i, arr) =>
+          `${c} ${Math.round((i / (arr.length - 1)) * 100)}%`
+        ),
+        intensity: 'medium'
+      }
+    } else {
+      gradient = generateGradientToken({
+        suggestedGradient,
+        colors,
+        mood,
+        archetype,
+        archetypeGradient: archetypePreset.gradient
+      })
+    }
 
-    // Determine effects from archetype
+    // Determine effects - prefer extracted effects from vision analysis
     const archetypeEffects = archetypePreset.effects || {}
-    const animations = archetypeEffects.animations !== false && archetypeEffects.animations !== 'none'
-    const shadows = archetypeEffects.shadows !== false && (archetypeEffects.shadows === true || archetypeEffects.shadows === 'soft' || mode === 'light')
+    let animations, shadows, shadowStyle
+
+    if (extractedEffects) {
+      // Use vision-extracted effects
+      animations = extractedEffects.animations !== 'none'
+      shadows = extractedEffects.shadows !== 'none'
+      shadowStyle = extractedEffects.shadows || 'normal'
+    } else {
+      animations = archetypeEffects.animations !== false && archetypeEffects.animations !== 'none'
+      shadows = archetypeEffects.shadows !== false && (archetypeEffects.shadows === true || archetypeEffects.shadows === 'soft' || mode === 'light')
+      shadowStyle = archetypeEffects.shadows === 'soft' ? 'soft' : 'normal'
+    }
 
     return {
       colors: {
@@ -110,9 +154,9 @@ export function useDesignGenerator() {
       },
       effects: {
         animations,
-        animationStyle: archetypeEffects.animations === 'subtle' ? 'subtle' : 'normal',
+        animationStyle: extractedEffects?.animations === 'subtle' || archetypeEffects.animations === 'subtle' ? 'subtle' : 'normal',
         shadows,
-        shadowStyle: archetypeEffects.shadows === 'soft' ? 'soft' : 'normal',
+        shadowStyle,
         rounded
       },
       gradient,
@@ -123,7 +167,8 @@ export function useDesignGenerator() {
         prompt,
         mood,
         fontPairId: fontPair.id,
-        archetypeDescription: archetypePreset.description
+        archetypeDescription: archetypePreset.description,
+        visionExtracted: !!(extractedGradient || extractedEffects || extractedColorTokens)
       }
     }
   }

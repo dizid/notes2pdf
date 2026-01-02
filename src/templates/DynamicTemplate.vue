@@ -3,7 +3,73 @@ import { computed } from 'vue'
 
 const props = defineProps({
   content: Object,
-  styles: Object // Template style definition from AI/user
+  styles: Object // Template style definition - supports both legacy and token formats
+})
+
+// Check if styles use the new token format (has colors/typography objects)
+const isTokenFormat = computed(() => {
+  return props.styles?.colors && props.styles?.typography
+})
+
+// Convert token format to legacy format for rendering
+const convertedStyles = computed(() => {
+  if (!isTokenFormat.value) return null
+
+  const s = props.styles
+  const colors = s.colors || {}
+  const typo = s.typography || {}
+  const spacing = s.spacing || {}
+  const effects = s.effects || {}
+  const gradient = s.gradient || {}
+
+  return {
+    container: {
+      backgroundColor: colors.background || '#ffffff',
+      color: colors.primary || '#111827',
+      padding: spacing.containerPadding || '48px',
+      fontFamily: `${typo.bodyFont || 'system-ui'}, sans-serif`
+    },
+    title: {
+      fontSize: typo.headingSize || '42px',
+      fontWeight: typo.headingWeight || 'bold',
+      lineHeight: typo.headingLineHeight || '1.2',
+      letterSpacing: typo.headingLetterSpacing || '-0.02em',
+      fontFamily: `${typo.headingFont || 'system-ui'}, sans-serif`,
+      color: colors.primary || '#111827'
+    },
+    text: {
+      fontSize: typo.bodySize || '14px',
+      lineHeight: typo.bodyLineHeight || '1.6',
+      color: colors.secondary || '#4b5563'
+    },
+    imageGrid: {
+      gap: spacing.elementGap || '12px',
+      columns: 2,
+      borderRadius: effects.borderRadius || '8px'
+    },
+    divider: {
+      color: colors.border || 'rgba(0,0,0,0.1)',
+      margin: `${spacing.sectionGap || '24px'} 0`
+    },
+    background: gradient.enabled ? {
+      type: 'gradient',
+      gradient: {
+        type: gradient.type || 'linear',
+        angle: gradient.angle || 135,
+        stops: gradient.stops?.map((stop, i) => {
+          // Handle both "color position%" string format and object format
+          if (typeof stop === 'string') {
+            const match = stop.match(/^(#[a-fA-F0-9]+|rgba?\([^)]+\))\s*(\d+)%?$/)
+            if (match) return { color: match[1], position: parseInt(match[2]) }
+            return { color: stop, position: i * 100 }
+          }
+          return stop
+        }) || []
+      }
+    } : { type: 'none' },
+    // Pass through raw effects for components that need them
+    _effects: effects
+  }
 })
 
 // Default styles if not provided
@@ -39,15 +105,18 @@ const defaultStyles = {
   }
 }
 
-// Merge provided styles with defaults
-const mergedStyles = computed(() => ({
-  container: { ...defaultStyles.container, ...(props.styles?.container || {}) },
-  title: { ...defaultStyles.title, ...(props.styles?.title || {}) },
-  text: { ...defaultStyles.text, ...(props.styles?.text || {}) },
-  imageGrid: { ...defaultStyles.imageGrid, ...(props.styles?.imageGrid || {}) },
-  divider: { ...defaultStyles.divider, ...(props.styles?.divider || {}) },
-  background: { ...defaultStyles.background, ...(props.styles?.background || {}) }
-}))
+// Use converted styles if token format, otherwise merge with defaults
+const mergedStyles = computed(() => {
+  const source = convertedStyles.value || props.styles || {}
+  return {
+    container: { ...defaultStyles.container, ...(source.container || {}) },
+    title: { ...defaultStyles.title, ...(source.title || {}) },
+    text: { ...defaultStyles.text, ...(source.text || {}) },
+    imageGrid: { ...defaultStyles.imageGrid, ...(source.imageGrid || {}) },
+    divider: { ...defaultStyles.divider, ...(source.divider || {}) },
+    background: { ...defaultStyles.background, ...(source.background || {}) }
+  }
+})
 
 // Generate background CSS from background style object
 const backgroundStyle = computed(() => {
@@ -86,16 +155,21 @@ const overlayStyle = computed(() => {
   }
 })
 
-const containerStyle = computed(() => ({
-  width: '100%',
-  height: '100%',
-  display: 'flex',
-  flexDirection: 'column',
-  boxSizing: 'border-box',
-  position: 'relative',
-  ...mergedStyles.value.container,
-  ...backgroundStyle.value
-}))
+const containerStyle = computed(() => {
+  const effects = convertedStyles.value?._effects || {}
+  return {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    boxSizing: 'border-box',
+    position: 'relative',
+    ...mergedStyles.value.container,
+    ...backgroundStyle.value,
+    // Apply box-shadow from vision analysis
+    ...(effects.shadow && effects.shadow !== 'none' ? { boxShadow: effects.shadow } : {})
+  }
+})
 
 const titleStyle = computed(() => ({
   margin: '0 0 16px 0',

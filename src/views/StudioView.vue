@@ -6,14 +6,19 @@ import { useDesignGenerator, FONT_PAIRS, isLightColor } from '../composables/use
 import { useImageAnalysis } from '../composables/useImageAnalysis'
 import { useWebsiteAnalyzer } from '../composables/useWebsiteAnalyzer'
 import { useToast } from '../composables/useToast'
+import { usePaywall } from '../composables/usePaywall'
 import DynamicTemplate from '../templates/DynamicTemplate.vue'
 
 const router = useRouter()
 const { addTemplate } = useTemplates()
-const { generateDesign, generateDesignTokens, generateLocalTokens, isGenerating, error } = useDesignGenerator()
+const { generateLocalTokens } = useDesignGenerator()
 const { analyzeImage, mergeAnalyses } = useImageAnalysis()
-const { analyzeWebsite, isAnalyzing: isAnalyzingWebsite, error: websiteError } = useWebsiteAnalyzer()
-const { showSuccess } = useToast()
+const { analyzeWebsite, analyzeWithVision, isAnalyzing: isAnalyzingWebsite, error: websiteError } = useWebsiteAnalyzer()
+const { showSuccess, showError } = useToast()
+const { canUseAI, isPro } = usePaywall()
+
+// Show upgrade modal
+const showUpgradeModal = ref(false)
 
 // Brand input state
 const websiteUrl = ref('')
@@ -28,8 +33,12 @@ const combinedAnalysis = ref(null) // Merged analysis from all images
 // Website analysis state
 const websiteAnalysis = ref(null)
 
-// Generated design state
-const generatedStyles = ref(null)
+// Extracted design tokens from vision analysis
+const extractedGradient = ref(null)
+const extractedEffects = ref(null)
+const extractedColorTokens = ref(null)
+
+// Template name for saving
 const templateName = ref('')
 
 // Design tweak state
@@ -39,9 +48,134 @@ const enableAnimations = ref(true)
 const enableShadows = ref(true)
 const designMode = ref('light') // light | dark
 
+// Reactive design tokens - auto-updates when settings change
+const generatedStyles = computed(() => {
+  // If we have vision-extracted data, use it directly
+  if (websiteAnalysis.value?.source === 'vision' && websiteAnalysis.value?.rawAnalysis) {
+    const raw = websiteAnalysis.value.rawAnalysis
+    const colors = raw.colors || {}
+    const typo = raw.typography || {}
+    const spacing = raw.spacing || {}
+    const effects = raw.effects || {}
+    const layout = raw.layout || {}
+
+    return {
+      colors: {
+        background: colors.background || '#ffffff',
+        surface: colors.surface || colors.background || '#f8f8f8',
+        primary: colors.text || '#1a1a1a',
+        secondary: colors.textMuted || '#666666',
+        accent: colors.primary || '#3b82f6',
+        border: colors.border || '#e5e5e5'
+      },
+      typography: {
+        headingFont: typo.headingFont || 'system-ui',
+        bodyFont: typo.bodyFont || 'system-ui',
+        headingSize: typo.headingSize || '48px',
+        headingWeight: typo.headingWeight || '700',
+        headingLineHeight: typo.headingLineHeight || '1.2',
+        headingLetterSpacing: typo.headingLetterSpacing || '-0.02em',
+        bodySize: typo.bodySize || '16px',
+        bodyLineHeight: typo.bodyLineHeight || '1.6',
+        fontPairId: selectedFontPair.value,
+        scale: 'normal'
+      },
+      spacing: {
+        containerPadding: spacing.containerPadding || '48px',
+        sectionGap: spacing.sectionGap || '64px',
+        elementGap: spacing.elementGap || '24px'
+      },
+      effects: {
+        borderRadius: effects.borderRadius || '8px',
+        shadow: effects.shadow || 'none',
+        buttonStyle: effects.buttonStyle || 'solid',
+        cardStyle: effects.cardStyle || 'flat',
+        animations: enableAnimations.value,
+        shadows: enableShadows.value,
+        rounded: effects.borderRadius || 'medium'
+      },
+      gradient: extractedGradient.value?.detected ? {
+        enabled: true,
+        type: extractedGradient.value.type || 'linear',
+        angle: extractedGradient.value.angle || 135,
+        css: extractedGradient.value.css,
+        stops: extractedGradient.value.colors?.map((c, i, arr) =>
+          `${c} ${Math.round((i / (arr.length - 1)) * 100)}%`
+        ) || []
+      } : { enabled: false },
+      layout: {
+        maxWidth: layout.maxWidth || '800px',
+        alignment: layout.alignment || 'center',
+        density: designDensity.value
+      },
+      mode: designMode.value,
+      archetype: raw.mood?.archetype || 'modern',
+      _meta: { source: 'vision', visionExtracted: true }
+    }
+  }
+
+  // Otherwise use local token generation from user selections
+  if (brandColors.value.length === 0 && !stylePrompt.value && !websiteAnalysis.value) {
+    return null // No input yet
+  }
+
+  const tokens = generateLocalTokens({
+    colors: brandColors.value,
+    prompt: stylePrompt.value,
+    mood: combinedAnalysis.value?.mood || websiteAnalysis.value?.mood,
+    suggestedGradient: combinedAnalysis.value?.suggestedGradient,
+    fontPairId: selectedFontPair.value,
+    density: designDensity.value,
+    extractedGradient: extractedGradient.value,
+    extractedEffects: extractedEffects.value,
+    extractedColorTokens: extractedColorTokens.value
+  })
+
+  if (!tokens) return null
+
+  // Override with user's explicit settings
+  tokens.mode = designMode.value
+  tokens.effects.animations = enableAnimations.value
+  tokens.effects.shadows = enableShadows.value
+
+  // Apply vision-extracted colors if available
+  if (extractedColorTokens.value) {
+    const ct = extractedColorTokens.value
+    tokens.colors.background = ct.background || tokens.colors.background
+    tokens.colors.surface = ct.surface || ct.background || tokens.colors.surface
+    tokens.colors.primary = ct.text || tokens.colors.primary
+    tokens.colors.secondary = ct.textMuted || ct.text || tokens.colors.secondary
+    tokens.colors.accent = ct.primary || tokens.colors.accent
+  } else if (brandColors.value.length > 0) {
+    const primaryBrand = brandColors.value[0]
+    const secondaryBrand = brandColors.value[1] || primaryBrand
+
+    if (designMode.value === 'dark') {
+      tokens.colors.background = '#111827'
+      tokens.colors.surface = '#1f2937'
+      tokens.colors.primary = '#ffffff'
+      tokens.colors.secondary = '#d1d5db'
+      tokens.colors.accent = primaryBrand
+    } else {
+      tokens.colors.background = primaryBrand
+      tokens.colors.surface = secondaryBrand
+      const isLightBg = isLightColor(primaryBrand)
+      tokens.colors.primary = isLightBg ? '#1a1a1a' : '#ffffff'
+      tokens.colors.secondary = isLightBg ? '#4b5563' : '#d1d5db'
+      tokens.colors.accent = brandColors.value[2] || secondaryBrand
+    }
+  } else if (designMode.value === 'dark') {
+    tokens.colors.background = '#111827'
+    tokens.colors.surface = '#1f2937'
+    tokens.colors.primary = '#ffffff'
+    tokens.colors.secondary = '#d1d5db'
+  }
+
+  return tokens
+})
+
 // UI state
 const colorPickerRef = ref(null)
-const validationMessage = ref('')
 
 // Sample content for preview
 const sampleContent = {
@@ -110,31 +244,6 @@ function handleColorPicked(event) {
   }
 }
 
-function showValidation(message) {
-  validationMessage.value = message
-  setTimeout(() => {
-    validationMessage.value = ''
-  }, 3000)
-}
-
-async function handleGenerate() {
-  if (!stylePrompt.value && brandColors.value.length === 0) {
-    showValidation('Please add brand colors or describe your desired style')
-    return
-  }
-
-  const result = await generateDesign({
-    colors: brandColors.value,
-    prompt: stylePrompt.value,
-    mood: combinedAnalysis.value?.mood,
-    suggestedGradient: combinedAnalysis.value?.suggestedGradient
-  })
-
-  if (result) {
-    generatedStyles.value = result
-  }
-}
-
 // Helper to convert hex to rgba
 function hexToRgba(hex, alpha) {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -158,67 +267,19 @@ const previewBackgroundStyle = computed(() => {
 
 function saveTemplate() {
   if (!templateName.value.trim()) {
-    showValidation('Please enter a name for your template')
+    showError('Please enter a name for your template')
     return
   }
 
-  // Generate design tokens for the new template
-  const tokens = generateLocalTokens({
-    colors: brandColors.value,
-    prompt: stylePrompt.value,
-    mood: effectiveMood.value,
-    fontPairId: selectedFontPair.value,
-    density: designDensity.value
-  })
-
-  // Override with explicit user settings
-  tokens.mode = designMode.value
-  tokens.effects.animations = enableAnimations.value
-  tokens.effects.shadows = enableShadows.value
-
-  // Use brand colors for the design - don't override with plain dark/light!
-  // If user has brand colors, use them to create a colored background
-  if (brandColors.value.length > 0) {
-    const primaryBrand = brandColors.value[0]
-    const secondaryBrand = brandColors.value[1] || primaryBrand
-
-    if (designMode.value === 'dark') {
-      // Dark mode with brand accent: dark bg with brand color as accent
-      tokens.colors.background = '#111827'
-      tokens.colors.surface = '#1f2937'
-      tokens.colors.primary = '#ffffff'
-      tokens.colors.secondary = '#d1d5db'
-      tokens.colors.accent = primaryBrand
-    } else {
-      // Light mode: use brand color as background tint or keep it as accent
-      // For a more colorful design, use the brand color as background
-      tokens.colors.background = primaryBrand
-      tokens.colors.surface = secondaryBrand
-      // Determine text color based on background luminance
-      const isLightBg = isLightColor(primaryBrand)
-      tokens.colors.primary = isLightBg ? '#1a1a1a' : '#ffffff'
-      tokens.colors.secondary = isLightBg ? '#4b5563' : '#d1d5db'
-      tokens.colors.accent = brandColors.value[2] || secondaryBrand
-    }
-  } else {
-    // No brand colors - use standard dark/light theme
-    if (designMode.value === 'dark') {
-      tokens.colors.background = '#111827'
-      tokens.colors.surface = '#1f2937'
-      tokens.colors.primary = '#ffffff'
-      tokens.colors.secondary = '#d1d5db'
-    } else {
-      tokens.colors.background = '#ffffff'
-      tokens.colors.surface = '#f8f8f8'
-      tokens.colors.primary = '#1a1a1a'
-      tokens.colors.secondary = '#666666'
-    }
+  if (!generatedStyles.value) {
+    showError('Add colors or analyze a website first')
+    return
   }
 
   const newId = addTemplate({
     name: templateName.value,
     description: stylePrompt.value || 'Custom template',
-    tokens: tokens
+    tokens: generatedStyles.value
   })
 
   showSuccess('Template saved!')
@@ -226,19 +287,63 @@ function saveTemplate() {
 }
 
 function startOver() {
-  generatedStyles.value = null
+  // Clear all inputs to reset the design
+  brandColors.value = []
+  stylePrompt.value = ''
+  websiteUrl.value = ''
+  websiteAnalysis.value = null
+  extractedGradient.value = null
+  extractedEffects.value = null
+  extractedColorTokens.value = null
   templateName.value = ''
+  selectedFontPair.value = null
+  designMode.value = 'light'
 }
 
 const hasInput = computed(() =>
-  brandColors.value.length > 0 || stylePrompt.value.trim() || websiteUrl.value.trim()
+  brandColors.value.length > 0 || stylePrompt.value.trim() || websiteUrl.value.trim() || websiteAnalysis.value
 )
+
+// Analysis status message
+const analysisStatus = ref('')
+
+// Normalize URL (add https:// if missing)
+function normalizeUrl(url) {
+  let normalized = url.trim()
+  if (!normalized) return ''
+
+  // Add https:// if no protocol specified
+  if (!normalized.match(/^https?:\/\//i)) {
+    normalized = 'https://' + normalized
+  }
+  return normalized
+}
 
 // Analyze website URL
 async function handleAnalyzeWebsite() {
+  // Check if user can use AI features
+  if (!canUseAI.value) {
+    showUpgradeModal.value = true
+    return
+  }
+
   if (!websiteUrl.value.trim()) return
 
-  const result = await analyzeWebsite(websiteUrl.value)
+  // Normalize URL before analysis
+  const url = normalizeUrl(websiteUrl.value)
+
+  // Try vision-based analysis first (better color/style extraction)
+  analysisStatus.value = 'Capturing and analyzing design...'
+  let result = await analyzeWithVision(url)
+
+  if (!result) {
+    // Fall back to CSS-based analysis
+    analysisStatus.value = 'Extracting styles from CSS...'
+    result = await analyzeWebsite(url)
+  }
+
+  analysisStatus.value = ''
+
   if (result) {
     websiteAnalysis.value = result
 
@@ -254,7 +359,7 @@ async function handleAnalyzeWebsite() {
       brandColors.value = brandColors.value.slice(0, 6)
     }
 
-    // Set font pair if detected
+    // Set font pair if detected (from CSS analysis or typography style hints)
     if (result.fonts?.heading) {
       const matchingPair = FONT_PAIRS.find(
         p => p.heading.toLowerCase() === result.fonts.heading.toLowerCase() ||
@@ -263,14 +368,111 @@ async function handleAnalyzeWebsite() {
       if (matchingPair) {
         selectedFontPair.value = matchingPair.id
       }
+    } else if (result.fonts?.typographyStyle) {
+      // Use typography style hints from vision analysis to pick a font pair
+      const style = result.fonts.typographyStyle
+      const styleToPair = {
+        'serif': 'classical-elegant',
+        'sans-serif': 'modern-minimal',
+        'display': 'editorial-bold',
+        'slab': 'bold-display',
+        'monospace': 'tech'
+      }
+      const pairId = styleToPair[style.headingStyle] || styleToPair[style.bodyStyle]
+      if (pairId) {
+        selectedFontPair.value = pairId
+      }
     }
 
     // Set mood-based preferences
     if (result.mood) {
-      designMode.value = result.mood.brightness === 'dark' ? 'dark' : 'light'
+      const brightness = result.mood.brightness?.type || result.mood.brightness
+      designMode.value = brightness === 'dark' ? 'dark' : 'light'
     }
 
-    showSuccess('Website analyzed! Colors and fonts extracted.')
+    // For vision analysis, build design directly from extracted CSS values
+    if (result.source === 'vision') {
+      // Store extracted data for later use
+      extractedGradient.value = result.gradient?.detected ? result.gradient : null
+      extractedEffects.value = result.effects || null
+      extractedColorTokens.value = result.colorTokens || null
+
+      // Apply effects to UI controls
+      if (result.effects) {
+        enableShadows.value = result.effects.shadow !== 'none'
+      }
+
+      // BUILD COMPLETE DESIGN from vision analysis
+      const raw = result.rawAnalysis || {}
+      const colors = raw.colors || {}
+      const typo = raw.typography || {}
+      const spacing = raw.spacing || {}
+      const effects = raw.effects || {}
+      const layout = raw.layout || {}
+
+      generatedStyles.value = {
+        colors: {
+          background: colors.background || '#ffffff',
+          surface: colors.surface || colors.background || '#f8f8f8',
+          primary: colors.text || '#1a1a1a',
+          secondary: colors.textMuted || '#666666',
+          accent: colors.primary || '#3b82f6',
+          border: colors.border || '#e5e5e5'
+        },
+        typography: {
+          headingFont: typo.headingFont || 'system-ui',
+          bodyFont: typo.bodyFont || 'system-ui',
+          headingSize: typo.headingSize || '48px',
+          headingWeight: typo.headingWeight || '700',
+          headingLineHeight: typo.headingLineHeight || '1.2',
+          headingLetterSpacing: typo.headingLetterSpacing || '-0.02em',
+          bodySize: typo.bodySize || '16px',
+          bodyLineHeight: typo.bodyLineHeight || '1.6',
+          fontPairId: null,
+          scale: 'normal'
+        },
+        spacing: {
+          containerPadding: spacing.containerPadding || '48px',
+          sectionGap: spacing.sectionGap || '64px',
+          elementGap: spacing.elementGap || '24px'
+        },
+        effects: {
+          borderRadius: effects.borderRadius || '8px',
+          shadow: effects.shadow || 'none',
+          buttonStyle: effects.buttonStyle || 'solid',
+          cardStyle: effects.cardStyle || 'flat',
+          animations: true,
+          shadows: effects.shadow !== 'none',
+          rounded: effects.borderRadius || 'medium'
+        },
+        gradient: result.gradient?.detected ? {
+          enabled: true,
+          type: result.gradient.type || 'linear',
+          angle: result.gradient.angle || 135,
+          css: result.gradient.css,
+          stops: result.gradient.colors?.map((c, i, arr) =>
+            `${c} ${Math.round((i / (arr.length - 1)) * 100)}%`
+          ) || []
+        } : { enabled: false },
+        layout: {
+          maxWidth: layout.maxWidth || '800px',
+          alignment: layout.alignment || 'center',
+          density: layout.density || 'normal'
+        },
+        mode: raw.mood?.brightness === 'dark' ? 'dark' : 'light',
+        archetype: raw.mood?.archetype || 'modern',
+        _meta: {
+          source: 'vision',
+          visionExtracted: true
+        }
+      }
+    }
+
+    if (result.source === 'vision') {
+      showSuccess('Design generated from website! Scroll down to preview and customize.')
+    } else {
+      showSuccess('Website analyzed! Colors and style extracted. Click Generate to create design.')
+    }
   }
 }
 
@@ -341,22 +543,25 @@ const fontPairs = FONT_PAIRS
               />
               <button
                 @click="handleAnalyzeWebsite"
-                :disabled="!websiteUrl.trim() || isAnalyzingWebsite"
+                :disabled="!websiteUrl.trim() || isAnalyzingWebsite || !!analysisStatus"
                 :class="[
                   'px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap',
-                  websiteUrl.trim() && !isAnalyzingWebsite
+                  websiteUrl.trim() && !isAnalyzingWebsite && !analysisStatus
                     ? 'bg-gray-900 text-white hover:bg-gray-800'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 ]"
               >
-                <span v-if="isAnalyzingWebsite" class="flex items-center gap-2">
+                <span v-if="isAnalyzingWebsite || analysisStatus" class="flex items-center gap-2">
                   <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                   </svg>
-                  Analyzing...
+                  {{ analysisStatus || 'Analyzing...' }}
                 </span>
-                <span v-else>Analyze</span>
+                <span v-else class="flex items-center gap-2">
+                  Analyze
+                  <span v-if="!isPro" class="px-1.5 py-0.5 text-[10px] bg-gradient-to-r from-purple-500 to-blue-500 rounded-full">PRO</span>
+                </span>
               </button>
             </div>
 
@@ -364,16 +569,32 @@ const fontPairs = FONT_PAIRS
             <div v-if="websiteAnalysis" class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
               <div class="flex items-start justify-between">
                 <div>
-                  <p class="text-sm font-medium text-green-800">Website analyzed!</p>
+                  <p class="text-sm font-medium text-green-800 flex items-center gap-2">
+                    Website analyzed!
+                    <span v-if="websiteAnalysis.source === 'vision'" class="px-1.5 py-0.5 text-[10px] bg-purple-100 text-purple-700 rounded-full">AI Vision</span>
+                    <span v-else class="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded-full">CSS</span>
+                  </p>
                   <p class="text-xs text-green-600 mt-1">
-                    <span class="capitalize font-medium">{{ websiteAnalysis.mood?.archetype || 'modern' }}</span> style
+                    <span class="capitalize font-medium">{{ websiteAnalysis.mood?.archetype || websiteAnalysis.mood?.style || 'modern' }}</span> style
                     <span class="mx-1 opacity-50">·</span>
                     {{ websiteAnalysis.colors?.length || 0 }} colors
-                    <span v-if="websiteAnalysis.fonts?.heading">
+                    <template v-if="websiteAnalysis.fonts?.heading">
                       <span class="mx-1 opacity-50">·</span>
                       {{ websiteAnalysis.fonts.heading }}
-                    </span>
+                      <template v-if="websiteAnalysis.fonts?.body && websiteAnalysis.fonts.body !== websiteAnalysis.fonts.heading">
+                        + {{ websiteAnalysis.fonts.body }}
+                      </template>
+                    </template>
                   </p>
+                  <div v-if="websiteAnalysis.mood?.keywords?.length" class="flex flex-wrap gap-1 mt-2">
+                    <span
+                      v-for="keyword in websiteAnalysis.mood.keywords.slice(0, 4)"
+                      :key="keyword"
+                      class="px-2 py-0.5 text-[10px] bg-green-100 text-green-700 rounded-full"
+                    >
+                      {{ keyword }}
+                    </span>
+                  </div>
                 </div>
                 <button @click="clearWebsiteAnalysis" class="text-green-600 hover:text-green-800">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -684,32 +905,6 @@ const fontPairs = FONT_PAIRS
 
         <!-- Right: Preview Panel -->
         <div class="space-y-6">
-          <!-- Generate Button - Above the fold -->
-          <div class="bg-white border border-gray-200 rounded-lg p-6">
-            <button
-              @click="handleGenerate"
-              :disabled="!hasInput || isGenerating"
-              :class="[
-                'w-full py-4 rounded-lg font-medium transition-colors text-lg',
-                hasInput && !isGenerating
-                  ? 'bg-gray-900 text-white hover:bg-gray-800'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              ]"
-            >
-              <span v-if="isGenerating" class="flex items-center justify-center gap-2">
-                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Generating Design...
-              </span>
-              <span v-else>Generate Design with AI</span>
-            </button>
-            <p v-if="validationMessage" class="text-amber-600 text-sm text-center mt-3 animate-pulse">{{ validationMessage }}</p>
-            <p v-else-if="error" class="text-red-600 text-sm text-center mt-3">{{ error }}</p>
-            <p v-else-if="!hasInput" class="text-gray-400 text-sm text-center mt-3">Add colors or describe your style to generate</p>
-          </div>
-
           <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h2 class="text-lg font-medium">Preview</h2>
@@ -770,5 +965,71 @@ const fontPairs = FONT_PAIRS
         </div>
       </div>
     </main>
+
+    <!-- Upgrade Modal -->
+    <div
+      v-if="showUpgradeModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="showUpgradeModal = false"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+        <div class="p-6">
+          <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold text-center text-gray-900 mb-2">
+            AI Features are Pro Only
+          </h3>
+          <p class="text-gray-600 text-center mb-6">
+            Upgrade to Pro to unlock AI-powered brand extraction, website analysis, and design generation.
+          </p>
+
+          <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <div class="flex items-center justify-between mb-3">
+              <span class="font-medium text-gray-900">Pro Plan</span>
+              <span class="text-gray-900 font-semibold">$9<span class="text-gray-500 font-normal">/mo</span></span>
+            </div>
+            <ul class="space-y-2 text-sm text-gray-600">
+              <li class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                AI brand extraction
+              </li>
+              <li class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                Unlimited publishes
+              </li>
+              <li class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                Page view analytics
+              </li>
+            </ul>
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              @click="showUpgradeModal = false"
+              class="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+            >
+              Maybe Later
+            </button>
+            <router-link
+              to="/pricing"
+              class="flex-1 py-3 px-4 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors text-center"
+              @click="showUpgradeModal = false"
+            >
+              Upgrade Now
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

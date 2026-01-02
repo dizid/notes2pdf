@@ -191,8 +191,79 @@ export function useWebsiteAnalyzer() {
     return generics.includes(font.toLowerCase())
   }
 
+  /**
+   * Analyze a website using Claude Vision (screenshot-based analysis)
+   * Returns richer design data than CSS parsing
+   * @param {string} url - Website URL to analyze
+   * @returns {Object|null} Vision analysis result or null on failure
+   */
+  async function analyzeWithVision(url) {
+    try {
+      const response = await fetch('/.netlify/functions/analyze-design', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        console.warn('Vision analysis failed:', data.error)
+        return null
+      }
+
+      const { analysis: visionAnalysis } = await response.json()
+
+      // Map vision analysis - pass through ALL rich CSS data
+      return {
+        colors: [
+          visionAnalysis.colors?.primary,
+          visionAnalysis.colors?.secondary,
+          visionAnalysis.colors?.background,
+          visionAnalysis.colors?.surface,
+          visionAnalysis.colors?.text,
+          visionAnalysis.colors?.textMuted
+        ].filter(Boolean),
+
+        // Raw color tokens for direct CSS use
+        colorTokens: visionAnalysis.colors,
+
+        // Gradient with ready-to-use CSS
+        gradient: visionAnalysis.gradient,
+
+        // Rich typography with actual CSS values
+        typography: visionAnalysis.typography,
+
+        // Spacing values
+        spacing: visionAnalysis.spacing,
+
+        // Effects with CSS values
+        effects: visionAnalysis.effects,
+
+        // Layout
+        layout: visionAnalysis.layout,
+
+        // Mood/archetype
+        mood: {
+          archetype: visionAnalysis.mood?.archetype || 'modern',
+          style: visionAnalysis.mood?.archetype || 'modern',
+          brightness: { type: visionAnalysis.mood?.brightness || 'light', strength: 0.8 },
+          keywords: [visionAnalysis.mood?.archetype || 'modern']
+        },
+
+        // Pass the entire raw analysis for direct use
+        rawAnalysis: visionAnalysis,
+
+        source: 'vision'
+      }
+    } catch (err) {
+      console.warn('Vision analysis error:', err.message)
+      return null
+    }
+  }
+
   return {
     analyzeWebsite,
+    analyzeWithVision,
     isAnalyzing,
     error,
     analysis

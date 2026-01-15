@@ -10,6 +10,7 @@ import { useHtmlRenderer } from '../composables/useHtmlRenderer'
 import { resolveTokens } from '../composables/useTokenResolver'
 import PaywallModal from './PaywallModal.vue'
 import AuthModal from './AuthModal.vue'
+import PrintPreviewModal from './PrintPreviewModal.vue'
 
 const props = defineProps({
   content: Object,
@@ -31,6 +32,8 @@ const clearDraft = inject('clearDraft', () => {})
 const showPublishModal = ref(false)
 const showPaywallModal = ref(false)
 const showAuthModal = ref(false)
+const showPrintPreview = ref(false)
+const printPreviewHtml = ref('')
 const copied = ref(false)
 
 // Load usage on mount
@@ -61,23 +64,38 @@ function handlePrint() {
     }))
   }
 
-  // Generate printable HTML
-  const html = renderToHtml(tokens, contentForPrint)
+  // Generate printable HTML and show preview modal
+  printPreviewHtml.value = renderToHtml(tokens, contentForPrint)
+  showPrintPreview.value = true
+}
 
+function executePrint({ html }) {
   // Open in new window using Blob URL (secure, no XSS)
   const blob = new Blob([html], { type: 'text/html' })
   const url = URL.createObjectURL(blob)
   const printWindow = window.open(url, '_blank')
 
   if (printWindow) {
-    printWindow.onload = () => {
-      // Wait for fonts to load, then trigger print
-      setTimeout(() => {
-        printWindow.print()
-        URL.revokeObjectURL(url)
-      }, 500)
+    printWindow.onload = async () => {
+      // Wait for fonts to actually load before printing
+      try {
+        await printWindow.document.fonts.ready
+      } catch (e) {
+        // Fallback for browsers without fonts API
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+
+      // Trigger print dialog
+      printWindow.print()
+
+      // Clean up blob URL after print dialog closes (or on window close)
+      printWindow.onafterprint = () => URL.revokeObjectURL(url)
+      printWindow.onbeforeunload = () => URL.revokeObjectURL(url)
     }
   }
+
+  // Close preview modal
+  showPrintPreview.value = false
 
   // Save to history
   saveToHistory({
@@ -255,6 +273,14 @@ function closeModal() {
     initial-mode="signup"
     @close="showAuthModal = false"
     @authenticated="handleAuthenticated"
+  />
+
+  <!-- Print Preview Modal -->
+  <PrintPreviewModal
+    :show="showPrintPreview"
+    :html="printPreviewHtml"
+    @close="showPrintPreview = false"
+    @print="executePrint"
   />
 
   <!-- Publish Modal -->

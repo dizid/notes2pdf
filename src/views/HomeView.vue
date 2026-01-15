@@ -13,6 +13,20 @@ import { usePublish } from '../composables/usePublish'
 import { useTokenResolver } from '../composables/useTokenResolver'
 import { useToast } from '../composables/useToast'
 import { useDraft } from '../composables/useDraft'
+import { STYLE_ARCHETYPES } from '../lib/designPresets'
+
+// Map archetypes to closest built-in templates
+const ARCHETYPE_TO_TEMPLATE = {
+  minimal: 'clean-deck',
+  bold: 'bold-editorial',
+  elegant: 'photo-spread',
+  playful: 'photo-spread',
+  tech: 'clean-deck',
+  modern: 'clean-deck',
+  friendly: 'clean-deck',
+  luxury: 'bold-editorial',
+  organic: 'photo-spread'
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -116,6 +130,25 @@ function handleBrandUrl(url) {
   // Could navigate to studio with URL or store for later
   // Future: Navigate to studio with URL pre-filled
 }
+
+// Handle parsed content from Smart Paste
+function handleParsedContent(parsed) {
+  if (!parsed.accepted) return
+
+  // Auto-select template based on suggested archetype
+  const archetype = parsed.suggestedArchetype
+  if (archetype && ARCHETYPE_TO_TEMPLATE[archetype]) {
+    selectedTemplate.value = ARCHETYPE_TO_TEMPLATE[archetype]
+
+    // Get archetype description for toast
+    const archetypeInfo = STYLE_ARCHETYPES[archetype]
+    const description = archetypeInfo?.description || archetype
+
+    showSuccess(`Content structured! Using "${archetype}" style: ${description}`)
+  } else {
+    showSuccess('Content structured and ready for design!')
+  }
+}
 </script>
 
 <template>
@@ -128,7 +161,7 @@ function handleBrandUrl(url) {
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
       <!-- Left: Input & Design Selection -->
       <div class="space-y-6">
-        <InputZone :content="content" @update="updateContent" />
+        <InputZone :content="content" @update="updateContent" @parsed="handleParsedContent" />
         <DesignPicker v-model="selectedTemplate" />
       </div>
 

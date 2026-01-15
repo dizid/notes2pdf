@@ -302,6 +302,30 @@ export function getDecorationStyles() {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
+
+      /* Boost decoration visibility for print */
+      .decoration-corner,
+      .decoration-corner-tl {
+        width: 100px;
+        height: 100px;
+      }
+
+      .decoration-corner svg [opacity],
+      .decoration-corner-tl svg [opacity] {
+        opacity: 0.4 !important;
+      }
+    }
+
+    /* Mobile - scale down decorations */
+    @media (max-width: 640px) {
+      .decoration-corner {
+        width: 80px;
+        height: 80px;
+      }
+      .decoration-corner-tl {
+        width: 60px;
+        height: 60px;
+      }
     }
   `
 }

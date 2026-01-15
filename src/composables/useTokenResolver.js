@@ -23,7 +23,22 @@ export const DEFAULT_TOKENS = {
     shadows: true,
     animations: true,
     rounded: 'medium'
-  }
+  },
+  decorations: {
+    accentLine: false,
+    dividers: 'none',
+    dropCap: false,
+    svgDecorations: true,
+    dropCapStyle: null,
+    titleUnderline: null
+  },
+  imageEffects: {
+    hover: 'none',
+    overlay: 'none',
+    border: false
+  },
+  archetype: 'modern',
+  contrast: 'medium'
 }
 
 /**

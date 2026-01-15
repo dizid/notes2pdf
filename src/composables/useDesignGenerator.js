@@ -160,6 +160,10 @@ export function useDesignGenerator() {
         rounded
       },
       gradient,
+      // Include archetype decorations and effects
+      decorations: archetypePreset.decorations || {},
+      imageEffects: archetypePreset.imageEffects || {},
+      contrast: archetypePreset.contrast || 'medium',
       mode,
       archetype,
       _meta: {

@@ -565,12 +565,27 @@ ${enhancedTypographyStyles}
       .gallery {
         page-break-inside: avoid;
         margin-bottom: 8mm !important;
+        overflow: hidden !important;
       }
 
       .gallery img {
         max-height: 60mm;
         object-fit: cover;
         page-break-inside: avoid;
+      }
+
+      /* Boost decoration opacity for print visibility */
+      .decoration-corner svg *,
+      .decoration-corner-tl svg *,
+      .decoration-divider svg *,
+      .decoration-accent svg *,
+      .decoration-corner,
+      .decoration-corner-tl {
+        opacity: 1 !important;
+      }
+      .decoration-corner [opacity],
+      .decoration-corner-tl [opacity] {
+        opacity: 0.35 !important;
       }
 
       /* Disable animations */
@@ -594,7 +609,8 @@ ${enhancedTypographyStyles}
         position: absolute;
         bottom: 10mm;
         right: 15mm;
-        font-size: 8pt;
+        font-size: 9pt;
+        opacity: 0.5 !important;
       }
 
       /* Drop cap adjustment for print */

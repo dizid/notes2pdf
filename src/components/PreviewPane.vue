@@ -9,13 +9,22 @@ import DynamicTemplate from '../templates/DynamicTemplate.vue'
 const props = defineProps({
   content: Object,
   template: String,
-  tokens: Object
+  tokens: Object,
+  // AI Preview props
+  aiPreviewHtml: {
+    type: String,
+    default: null
+  },
+  isGeneratingPreview: {
+    type: Boolean,
+    default: false
+  }
 })
 
-const emit = defineEmits(['fullscreen'])
+const emit = defineEmits(['fullscreen', 'generate-ai-preview'])
 
 const { getTemplateById } = useTemplates()
-const { renderToHtml, renderForExport } = useHtmlRenderer()
+const { renderToHtml } = useHtmlRenderer()
 const { activeTokens } = useTokenResolver(() => props.tokens, () => props.template)
 const { isPro } = usePaywall()
 
@@ -49,31 +58,6 @@ const previewHtml = computed(() => {
   return renderToHtml(tokens, contentForPreview, { isPro: isPro.value })
 })
 
-// Generate HTML for export (NOT iframe - html2canvas needs direct DOM)
-const exportHtml = computed(() => {
-  const tokens = activeTokens.value
-
-  // Check if we have any real content
-  const hasRealContent = props.content?.title?.trim() || props.content?.text?.trim() || props.content?.images?.length
-
-  // Prepare content - use placeholder if empty
-  const contentForExport = hasRealContent
-    ? {
-        ...props.content,
-        images: props.content.images?.map(img => ({
-          src: img.data || img.src || img.url,
-          alt: img.name || ''
-        }))
-      }
-    : {
-        title: 'Your Title Here',
-        text: 'Start typing your content in the left panel.',
-        images: []
-      }
-
-  return renderForExport(tokens, contentForExport, { isPro: isPro.value })
-})
-
 // For built-in templates, use their component directly
 // For custom templates, use DynamicTemplate with their styles
 const templateComponent = computed(() => {
@@ -95,42 +79,76 @@ function toggleFullscreen() {
   isFullscreen.value = !isFullscreen.value
   emit('fullscreen', isFullscreen.value)
 }
+
+// Request AI preview generation
+function requestAiPreview() {
+  emit('generate-ai-preview')
+}
+
+// Display HTML: use AI preview if available, otherwise local
+const displayHtml = computed(() => {
+  return props.aiPreviewHtml || previewHtml.value
+})
+
+// Show "Preview Final" button when AI preview not yet generated
+const showPreviewButton = computed(() => {
+  return !props.aiPreviewHtml && !props.isGeneratingPreview
+})
 </script>
 
 <template>
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
     <!-- Header -->
     <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-      <h2 class="text-lg font-medium">Preview</h2>
-      <button
-        @click="toggleFullscreen"
-        class="p-1.5 rounded hover:bg-gray-100 text-gray-500"
-        title="Fullscreen preview"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-        </svg>
-      </button>
+      <div class="flex items-center gap-2">
+        <h2 class="text-lg font-medium">Preview</h2>
+        <!-- AI Preview indicator -->
+        <span v-if="aiPreviewHtml" class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+          Final
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        <!-- Preview Final button -->
+        <button
+          v-if="showPreviewButton"
+          @click="requestAiPreview"
+          class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          title="Generate AI preview (shows final published result)"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+          Preview Final
+        </button>
+        <!-- Loading state -->
+        <div v-if="isGeneratingPreview" class="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500">
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          Generating...
+        </div>
+        <!-- Fullscreen button -->
+        <button
+          @click="toggleFullscreen"
+          class="p-1.5 rounded hover:bg-gray-100 text-gray-500"
+          title="Fullscreen preview"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Preview container with iframe - fills available space -->
     <div class="bg-white rounded-b-lg overflow-hidden" style="height: 400px;">
       <iframe
-        :srcdoc="previewHtml"
+        :srcdoc="displayHtml"
         class="w-full h-full border-0"
         sandbox="allow-same-origin allow-scripts"
         title="Preview"
       ></iframe>
-    </div>
-
-    <!-- Hidden full-size element for PNG/PDF export (NOT iframe - html2canvas can't capture iframes) -->
-    <div class="fixed -left-[9999px] top-0 overflow-hidden">
-      <div
-        id="pdf-preview"
-        class="export-container"
-        style="width: 800px; min-height: 800px; background: white;"
-        v-html="exportHtml"
-      ></div>
     </div>
   </div>
 
@@ -156,7 +174,7 @@ function toggleFullscreen() {
       <!-- Fullscreen preview -->
       <div class="flex-1 overflow-hidden p-4">
         <iframe
-          :srcdoc="previewHtml"
+          :srcdoc="displayHtml"
           class="w-full h-full border-0 bg-white rounded-lg"
           sandbox="allow-same-origin allow-scripts"
           title="Fullscreen Preview"

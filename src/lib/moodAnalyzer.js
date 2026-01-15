@@ -28,11 +28,14 @@ export function analyzeMood(colors, css) {
     style: 'modern'
   }
 
-  if (!colors || colors.length === 0) return mood
+  // Analyze colors if available
+  if (colors && colors.length > 0) {
+    mood.temperature = analyzeTemperature(colors)
+    mood.saturation = analyzeSaturationMood(colors)
+    mood.brightness = analyzeBrightnessMood(colors)
+  }
 
-  mood.temperature = analyzeTemperature(colors)
-  mood.saturation = analyzeSaturationMood(colors)
-  mood.brightness = analyzeBrightnessMood(colors)
+  // Always analyze CSS patterns (energy, formality) even without colors
   mood.energy = analyzeEnergy(css, colors)
   mood.formality = analyzeFormality(css)
   mood.archetype = detectArchetype(css, colors, mood)

@@ -320,7 +320,8 @@ export function isValidBrandColor(hex) {
   const max = Math.max(rgb.r, rgb.g, rgb.b)
   const min = Math.min(rgb.r, rgb.g, rgb.b)
   const saturation = max === 0 ? 0 : (max - min) / max * 100
-  if (saturation < 5 && brightness > 20 && brightness < 235) return false
+  // Allow slightly desaturated colors (brand colors often have subtle tints)
+  if (saturation < 3 && brightness > 20 && brightness < 235) return false
 
   return true
 }

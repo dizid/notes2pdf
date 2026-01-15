@@ -4,6 +4,19 @@
 //   CLOUDFLARE_ACCOUNT_ID, R2_PUBLIC_URL
 
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { createClient } from '@supabase/supabase-js'
+
+// Initialize Supabase client
+function getSupabase() {
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+
+  if (!url || !key) {
+    return null
+  }
+
+  return createClient(url, key)
+}
 import {
   safeJsonParse,
   validateString,
@@ -40,7 +53,7 @@ export async function handler(event) {
     return errorResponse(400, parseError)
   }
 
-  const { html, title, remixData } = body
+  const { html, title, remixData, userId } = body
 
   // Validate HTML
   const htmlError = validateString(html, 'html', { required: true, maxLength: MAX_HTML_SIZE })
@@ -67,21 +80,31 @@ export async function handler(event) {
     // Generate slug from title
     const slug = generateSlug(title || 'deck')
 
-    // Inject "Create your own" CTA into the HTML before </body>
-    let finalHtml = html
+    // Build injected content: tracking pixel + CTA
+    let injectedHtml = ''
+
+    // 1. Always add tracking pixel for analytics
+    const trackingPixel = `
+<!-- Sizzle Analytics -->
+<img src="https://sizzle.love/.netlify/functions/track?s=${slug}" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" alt="" />
+`
+    injectedHtml += trackingPixel
+
+    // 2. Add "Create your own" CTA if remix data present (floating badge style)
     if (remixData) {
       const ctaHtml = `
 <!-- Sizzle Remix CTA -->
-<div style="position: fixed; bottom: 0; left: 0; right: 0; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 16px 20px; text-align: center; z-index: 9999; box-shadow: 0 -4px 20px rgba(0,0,0,0.3);">
-  <a href="https://sizzle.love/remix/${slug}" style="color: #fff; text-decoration: none; font-family: system-ui, -apple-system, sans-serif; font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px;">
-    <span style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">✨</span>
-    Create your own page in 60 seconds
-    <span style="opacity: 0.7;">→</span>
-  </a>
-</div>
+<a href="https://sizzle.love/remix/${slug}" style="position:fixed;bottom:20px;right:20px;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);color:#fff;text-decoration:none;font-family:system-ui,-apple-system,sans-serif;font-size:14px;font-weight:500;padding:12px 20px;border-radius:99px;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:9999;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+  <span style="font-size:16px;">✨</span>
+  Make your own
+  <span style="opacity:0.7;">→</span>
+</a>
 `
-      finalHtml = html.replace('</body>', `${ctaHtml}</body>`)
+      injectedHtml += ctaHtml
     }
+
+    // Inject before </body>
+    let finalHtml = html.replace('</body>', `${injectedHtml}</body>`)
 
     // Create S3 client configured for R2
     const client = new S3Client({
@@ -119,6 +142,28 @@ export async function handler(event) {
     const publicUrl = R2_PUBLIC_URL
       ? `${R2_PUBLIC_URL.replace(/\/$/, '')}/${key}`
       : `https://${R2_BUCKET_NAME}.${CLOUDFLARE_ACCOUNT_ID}.r2.dev/${key}`
+
+    // Initialize page stats in Supabase (fire and forget)
+    const supabase = getSupabase()
+    if (supabase) {
+      supabase
+        .from('page_stats')
+        .upsert({
+          slug,
+          user_id: userId || null,
+          total_views: 0,
+          created_at: new Date().toISOString()
+        }, {
+          onConflict: 'slug',
+          ignoreDuplicates: true
+        })
+        .then(() => {
+          console.log('Page stats initialized for:', slug)
+        })
+        .catch(err => {
+          console.error('Failed to init page stats:', err)
+        })
+    }
 
     return {
       statusCode: 200,

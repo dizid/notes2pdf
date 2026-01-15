@@ -11,17 +11,28 @@ const usage = ref(null)
 const loading = ref(false)
 const error = ref(null)
 
+// Test bypass - check URL param or sessionStorage
+const urlParams = new URLSearchParams(window.location.search)
+const urlBypass = urlParams.get('pro') === 'test123'
+if (urlBypass) {
+  sessionStorage.setItem('sizzle_bypass', 'true')
+}
+const bypassActive = urlBypass || sessionStorage.getItem('sizzle_bypass') === 'true'
+
 /**
  * Composable for paywall/quota management
  */
 export function usePaywall() {
   const { user, isAuthenticated } = useAuth()
 
-  const isPro = computed(() => usage.value?.is_pro || false)
+  const isPro = computed(() => bypassActive || usage.value?.is_pro || false)
   const usageCount = computed(() => usage.value?.shares_this_month || 0)
   const usageLimit = computed(() => isPro.value ? Infinity : FREE_TIER_LIMIT)
   const usageRemaining = computed(() => Math.max(0, usageLimit.value - usageCount.value))
   const canPublish = computed(() => isPro.value || usageCount.value < FREE_TIER_LIMIT)
+
+  // AI features are Pro-only (costs ~$0.02-0.05 per Claude API call)
+  const canUseAI = computed(() => bypassActive || isPro.value)
 
   /**
    * Get current month string (YYYY-MM)
@@ -194,7 +205,7 @@ export function usePaywall() {
   }
 
   /**
-   * Create Stripe checkout session (one-time payment)
+   * Create Stripe checkout session (subscription)
    * @returns {Promise<string|null>} Checkout URL or null on error
    */
   async function createCheckout() {
@@ -283,6 +294,7 @@ export function usePaywall() {
 
     // Computed
     isPro,
+    canUseAI,
     usageCount,
     usageLimit,
     usageRemaining,

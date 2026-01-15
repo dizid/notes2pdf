@@ -32,72 +32,112 @@ export const ROUNDED_PRESETS = {
   full: '16px'
 }
 
+// Shadow style presets - layered for realistic depth
+export const SHADOW_PRESETS = {
+  none: 'none',
+  flat: '0 4px 24px rgba(0,0,0,0.08)',
+  soft: '0 2px 8px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06)',
+  layered: '0 1px 2px rgba(0,0,0,0.05), 0 4px 8px rgba(0,0,0,0.05), 0 16px 32px rgba(0,0,0,0.08)',
+  dramatic: '0 2px 4px rgba(0,0,0,0.08), 0 8px 16px rgba(0,0,0,0.12), 0 24px 48px rgba(0,0,0,0.16)'
+}
+
+// Animation easing presets
+export const ANIMATION_PRESETS = {
+  none: { enabled: false },
+  subtle: { enabled: true, duration: '0.5s', easing: 'ease-out', stagger: 0.08 },
+  normal: { enabled: true, duration: '0.6s', easing: 'cubic-bezier(0.16, 1, 0.3, 1)', stagger: 0.1 },
+  dramatic: { enabled: true, duration: '0.8s', easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)', stagger: 0.12 }
+}
+
 /**
  * Style archetype presets - bundles of visual decisions for each archetype
+ *
+ * Decoration options:
+ * - svgDecorations: boolean - Enable SVG corner/divider decorations
+ * - dropCapStyle: 'simple' | 'decorative' | 'boxed' - Style of drop cap
+ * - titleUnderline: 'gradient' | 'elegant' | null - Style of title underline
  */
 export const STYLE_ARCHETYPES = {
   minimal: {
-    effects: { shadows: false, animations: false, rounded: 'subtle' },
-    typography: { fontPairId: 'modern-minimal', headingWeight: 400, letterSpacing: '0.02em' },
+    effects: { shadows: 'none', shadowStyle: 'none', animations: 'none', rounded: 'subtle' },
+    typography: { fontPairId: 'modern-minimal', headingWeight: 400, letterSpacing: '0.02em', lineHeight: 1.6 },
     gradient: { enabled: false },
+    decorations: { accentLine: false, dividers: 'none', dropCap: false, svgDecorations: false, dropCapStyle: null, titleUnderline: null },
+    imageEffects: { hover: 'none', overlay: 'none', border: false },
     contrast: 'low',
     description: 'Clean, simple, focused'
   },
   bold: {
-    effects: { shadows: true, animations: true, rounded: 'medium' },
-    typography: { fontPairId: 'bold-display', headingWeight: 800, letterSpacing: '-0.02em' },
+    effects: { shadows: true, shadowStyle: 'dramatic', animations: 'dramatic', rounded: 'medium' },
+    typography: { fontPairId: 'bold-display', headingWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.0 },
     gradient: { enabled: true, intensity: 'high' },
+    decorations: { accentLine: true, dividers: 'gradient', dropCap: false, svgDecorations: true, dropCapStyle: null, titleUnderline: 'gradient' },
+    imageEffects: { hover: 'lift', overlay: 'none', border: false },
     contrast: 'high',
     description: 'Impactful, dynamic, striking'
   },
   elegant: {
-    effects: { shadows: 'soft', animations: 'subtle', rounded: 'subtle' },
-    typography: { fontPairId: 'classic-elegant', headingWeight: 500, letterSpacing: '0.05em' },
+    effects: { shadows: true, shadowStyle: 'soft', animations: 'subtle', rounded: 'subtle' },
+    typography: { fontPairId: 'classic-elegant', headingWeight: 500, letterSpacing: '0.05em', lineHeight: 1.7 },
     gradient: { enabled: true, intensity: 'low' },
+    decorations: { accentLine: false, dividers: 'simple', dropCap: true, svgDecorations: true, dropCapStyle: 'decorative', titleUnderline: 'elegant' },
+    imageEffects: { hover: 'zoom', overlay: 'none', border: true },
     contrast: 'medium',
     description: 'Sophisticated, luxurious, refined'
   },
   playful: {
-    effects: { shadows: true, animations: true, rounded: 'full' },
-    typography: { fontPairId: 'creative', headingWeight: 700, letterSpacing: '0' },
+    effects: { shadows: true, shadowStyle: 'layered', animations: 'normal', rounded: 'full' },
+    typography: { fontPairId: 'creative', headingWeight: 700, letterSpacing: '0', lineHeight: 1.5 },
     gradient: { enabled: true, intensity: 'medium' },
+    decorations: { accentLine: false, dividers: 'gradient', dropCap: false, svgDecorations: true, dropCapStyle: null, titleUnderline: null },
+    imageEffects: { hover: 'lift', overlay: 'none', border: false },
     contrast: 'medium',
     description: 'Fun, friendly, approachable'
   },
   tech: {
-    effects: { shadows: true, animations: true, rounded: 'medium' },
-    typography: { fontPairId: 'tech', headingWeight: 600, letterSpacing: '-0.01em' },
+    effects: { shadows: true, shadowStyle: 'layered', animations: 'normal', rounded: 'medium' },
+    typography: { fontPairId: 'tech', headingWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.6 },
     gradient: { enabled: true, intensity: 'medium' },
+    decorations: { accentLine: true, dividers: 'simple', dropCap: false, svgDecorations: true, dropCapStyle: null, titleUnderline: null },
+    imageEffects: { hover: 'zoom', overlay: 'gradient', border: false },
     contrast: 'medium',
     description: 'Innovative, modern, precise'
   },
   organic: {
-    effects: { shadows: 'soft', animations: 'subtle', rounded: 'medium' },
-    typography: { fontPairId: 'friendly', headingWeight: 500, letterSpacing: '0' },
+    effects: { shadows: true, shadowStyle: 'soft', animations: 'subtle', rounded: 'medium' },
+    typography: { fontPairId: 'friendly', headingWeight: 500, letterSpacing: '0', lineHeight: 1.7 },
     gradient: { enabled: true, intensity: 'low', type: 'radial' },
+    decorations: { accentLine: false, dividers: 'simple', dropCap: false, svgDecorations: true, dropCapStyle: null, titleUnderline: null },
+    imageEffects: { hover: 'zoom', overlay: 'none', border: false },
     contrast: 'low',
     description: 'Natural, flowing, authentic'
   },
   luxury: {
-    effects: { shadows: 'soft', animations: 'subtle', rounded: 'none' },
-    typography: { fontPairId: 'literary', headingWeight: 400, letterSpacing: '0.08em' },
+    effects: { shadows: true, shadowStyle: 'soft', animations: 'subtle', rounded: 'none' },
+    typography: { fontPairId: 'literary', headingWeight: 400, letterSpacing: '0.08em', lineHeight: 1.8 },
     gradient: { enabled: true, intensity: 'low' },
+    decorations: { accentLine: false, dividers: 'simple', dropCap: true, svgDecorations: true, dropCapStyle: 'boxed', titleUnderline: 'elegant' },
+    imageEffects: { hover: 'zoom', overlay: 'tint', border: true },
     contrast: 'high',
     preferDark: true,
     description: 'Premium, exclusive, opulent'
   },
   friendly: {
-    effects: { shadows: true, animations: true, rounded: 'full' },
-    typography: { fontPairId: 'friendly', headingWeight: 600, letterSpacing: '0' },
+    effects: { shadows: true, shadowStyle: 'layered', animations: 'normal', rounded: 'full' },
+    typography: { fontPairId: 'friendly', headingWeight: 600, letterSpacing: '0', lineHeight: 1.6 },
     gradient: { enabled: false },
+    decorations: { accentLine: false, dividers: 'none', dropCap: false, svgDecorations: true, dropCapStyle: null, titleUnderline: null },
+    imageEffects: { hover: 'lift', overlay: 'none', border: false },
     contrast: 'medium',
     preferLight: true,
     description: 'Warm, welcoming, trustworthy'
   },
   modern: {
-    effects: { shadows: true, animations: true, rounded: 'medium' },
-    typography: { fontPairId: 'geometric', headingWeight: 600, letterSpacing: '-0.01em' },
+    effects: { shadows: true, shadowStyle: 'layered', animations: 'normal', rounded: 'medium' },
+    typography: { fontPairId: 'geometric', headingWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.6 },
     gradient: { enabled: true, intensity: 'medium' },
+    decorations: { accentLine: true, dividers: 'gradient', dropCap: false, svgDecorations: true, dropCapStyle: null, titleUnderline: 'gradient' },
+    imageEffects: { hover: 'zoom', overlay: 'none', border: false },
     contrast: 'medium',
     description: 'Contemporary, clean, versatile'
   }
@@ -115,6 +155,22 @@ export function getFontPair(fontPairId) {
  */
 export function getArchetypePreset(archetype) {
   return STYLE_ARCHETYPES[archetype] || STYLE_ARCHETYPES.modern
+}
+
+/**
+ * Get shadow CSS from style
+ */
+export function getShadowCss(shadowStyle) {
+  return SHADOW_PRESETS[shadowStyle] || SHADOW_PRESETS.layered
+}
+
+/**
+ * Get animation preset
+ */
+export function getAnimationPreset(animationStyle) {
+  if (animationStyle === true) return ANIMATION_PRESETS.normal
+  if (animationStyle === false) return ANIMATION_PRESETS.none
+  return ANIMATION_PRESETS[animationStyle] || ANIMATION_PRESETS.normal
 }
 
 /**

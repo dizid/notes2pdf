@@ -15,8 +15,9 @@ const { showError } = useToast()
 
 const features = [
   'Unlimited publishes',
+  'AI brand extraction',
+  'Page view analytics',
   'All export formats',
-  'Priority support',
   'No sizzle branding'
 ]
 
@@ -84,10 +85,10 @@ function close() {
           <!-- Pricing -->
           <div class="text-center mb-6 p-4 bg-blue-50 rounded-lg border-2 border-blue-500">
             <div class="flex items-baseline justify-center gap-1 mb-1">
-              <span class="text-3xl font-bold text-gray-900">$22</span>
-              <span class="text-sm text-gray-500">one-time</span>
+              <span class="text-3xl font-bold text-gray-900">$9</span>
+              <span class="text-sm text-gray-500">/month</span>
             </div>
-            <span class="text-sm text-blue-600 font-medium">Lifetime access</span>
+            <span class="text-sm text-blue-600 font-medium">or $69/year (save 36%)</span>
           </div>
 
           <!-- Features -->
@@ -127,7 +128,7 @@ function close() {
 
           <!-- Fine print -->
           <p class="mt-4 text-xs text-gray-500 text-center">
-            Secure payment via Stripe. One-time payment. Lifetime access.
+            Secure payment via Stripe. Cancel anytime.
           </p>
         </div>
       </div>

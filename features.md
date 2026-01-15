@@ -78,15 +78,26 @@ Transform raw notes into beautiful, shareable web pages and PDFs in seconds.
 - Optional: use the app anonymously without signup
 - User profiles with avatar and metadata
 
+### Analytics (Pro)
+- Page view tracking on published pages
+- Total views across all pages
+- Per-page view counts in history
+
 ## Pricing
 
 ### Free Tier
-- 1 monthly publish limit
-- Sizzle branding on published pages
+- 1 publish per month
+- Preset templates only
+- PNG & PDF export
+- Sizzle branding on pages
 
-### Pro Tier ($22 lifetime)
+### Pro Tier ($9/month or $69/year)
 - Unlimited publishes
-- No watermark/branding
+- AI brand extraction & website analysis
+- Page view analytics
+- All export formats
+- No sizzle branding
+- Priority support
 
 ## Privacy
 

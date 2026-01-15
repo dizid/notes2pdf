@@ -54,11 +54,5 @@
         <li>History of past exports saved locally</li>
       </ul>
     </section>
-
-    <footer class="pt-8 border-t border-gray-200 text-sm text-gray-500">
-      <p>
-        Made with <span class="text-red-500">&hearts;</span> by <a href="https://dizid.com" target="_blank" class="hover:text-gray-700">dizid.com</a>
-      </p>
-    </footer>
   </div>
 </template>

@@ -1,6 +1,11 @@
 dev.md
 new app.
 
+https://apiflash.com/dashboard/usage
+
+
+Done. The bypass is now implemented. Here's how to use it: Local: http://localhost:3000/app?pro=test123 Remote: https://sizzle.love/app?pro=test123 Once you visit with ?pro=test123, it persists for that browser tab session. No need to keep the parameter in the URL after the first visit.
+
 
 token value: flt3dgwuqOY3KJLV_YrKy_291iJi9VVnBYdvRV87
 

@@ -1,14 +1,13 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
-import { usePdfExport } from '../composables/usePdfExport'
 import { usePublish } from '../composables/usePublish'
 import { useStorage } from '../composables/useStorage'
 import { useToast } from '../composables/useToast'
 import { useTemplates } from '../composables/useTemplates'
 import { usePaywall } from '../composables/usePaywall'
+import { useHtmlRenderer } from '../composables/useHtmlRenderer'
 import { resolveTokens } from '../composables/useTokenResolver'
-import ExportModal from './ExportModal.vue'
 import PaywallModal from './PaywallModal.vue'
 import AuthModal from './AuthModal.vue'
 
@@ -20,29 +19,22 @@ const props = defineProps({
 })
 
 const router = useRouter()
-const { exportPdf, isExporting } = usePdfExport()
 const { publish, copyToClipboard, downloadHtml, reset: resetPublish, isPublishing, publishedUrl, publishError, publishErrorCode, generatedHtml } = usePublish()
+const { renderToHtml } = useHtmlRenderer()
 const { saveToHistory } = useStorage()
 const { showSuccess } = useToast()
 const { getTemplateById, builtInTemplates } = useTemplates()
 const { canPublish, incrementUsage, initUsage } = usePaywall()
+const clearDraft = inject('clearDraft', () => {})
 
 // Modal state
 const showPublishModal = ref(false)
-const showExportModal = ref(false)
 const showPaywallModal = ref(false)
 const showAuthModal = ref(false)
 const copied = ref(false)
 
 // Load usage on mount
 onMounted(() => initUsage())
-
-// Export filename
-const exportFilename = computed(() => {
-  return props.content.title?.trim()
-    ? props.content.title.trim().replace(/\s+/g, '-').toLowerCase()
-    : `export-${Date.now()}`
-})
 
 const validationErrors = computed(() => {
   const errors = []
@@ -54,15 +46,40 @@ const validationErrors = computed(() => {
 
 const isValid = computed(() => validationErrors.value.length === 0)
 
-async function handleExport() {
+function handlePrint() {
   if (!isValid.value) return
 
-  const filename = props.content.title?.trim()
-    ? `${props.content.title.trim().replace(/\s+/g, '-').toLowerCase()}.pdf`
-    : `deck-${Date.now()}.pdf`
+  // Resolve tokens using centralized logic
+  const tokens = resolveTokens(props.tokens, props.template, getTemplateById, builtInTemplates.value)
 
-  await exportPdf('pdf-preview', filename)
+  // Prepare content with images in the right format
+  const contentForPrint = {
+    ...props.content,
+    images: props.content.images?.map(img => ({
+      src: img.data || img.src || img.url,
+      alt: img.name || ''
+    }))
+  }
 
+  // Generate printable HTML
+  const html = renderToHtml(tokens, contentForPrint)
+
+  // Open in new window using Blob URL (secure, no XSS)
+  const blob = new Blob([html], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  const printWindow = window.open(url, '_blank')
+
+  if (printWindow) {
+    printWindow.onload = () => {
+      // Wait for fonts to load, then trigger print
+      setTimeout(() => {
+        printWindow.print()
+        URL.revokeObjectURL(url)
+      }, 500)
+    }
+  }
+
+  // Save to history
   saveToHistory({
     id: Date.now(),
     title: props.content.title || 'Untitled',
@@ -74,8 +91,6 @@ async function handleExport() {
       style: props.content.style
     }
   })
-
-  showSuccess('PDF downloaded!')
 }
 
 async function handlePublish() {
@@ -121,6 +136,9 @@ async function handlePublish() {
         style: props.content.style
       }
     })
+
+    // Clear draft after successful publish
+    clearDraft()
   }
 }
 
@@ -157,26 +175,6 @@ function handleDownloadHtml() {
 
 function closeModal() {
   showPublishModal.value = false
-}
-
-function openExportModal() {
-  if (!isValid.value) return
-  showExportModal.value = true
-}
-
-function handleExported({ format }) {
-  saveToHistory({
-    id: Date.now(),
-    title: props.content.title || 'Untitled',
-    template: props.template,
-    timestamp: Date.now(),
-    content: {
-      title: props.content.title,
-      text: props.content.text,
-      style: props.content.style
-    }
-  })
-  showExportModal.value = false
 }
 </script>
 
@@ -225,9 +223,9 @@ function handleExported({ format }) {
         </span>
       </button>
 
-      <!-- Export button (opens modal with format options) -->
+      <!-- Print to PDF button -->
       <button
-        @click="openExportModal"
+        @click="handlePrint"
         :disabled="!isValid"
         :class="[
           'flex-1 py-3 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2',
@@ -237,21 +235,12 @@ function handleExported({ format }) {
         ]"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
         </svg>
-        Export
+        Print to PDF
       </button>
     </div>
   </div>
-
-  <!-- Export Modal -->
-  <ExportModal
-    :show="showExportModal"
-    :filename="exportFilename"
-    element-id="pdf-preview"
-    @close="showExportModal = false"
-    @exported="handleExported"
-  />
 
   <!-- Paywall Modal -->
   <PaywallModal

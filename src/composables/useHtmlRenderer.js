@@ -1,5 +1,6 @@
 import { useDesignGenerator } from './useDesignGenerator'
 import { SHADOW_PRESETS, ANIMATION_PRESETS } from '../lib/designPresets'
+import { getDecorationsForArchetype, getDecorationStyles } from '../lib/svgDecorations'
 
 const { getGoogleFontsUrl } = useDesignGenerator()
 
@@ -320,6 +321,77 @@ export function useHtmlRenderer() {
   }
 
   /**
+   * Generate enhanced typography CSS based on decoration options
+   * @param {Object} tokens - Design tokens
+   * @returns {string} Enhanced typography CSS
+   */
+  function generateEnhancedTypography(tokens) {
+    const decorations = tokens.decorations || {}
+    const headingWeight = tokens.typography?.headingWeight || 600
+    let css = ''
+
+    // Enhanced drop cap styles
+    if (decorations.dropCapStyle === 'decorative') {
+      css += `
+    .content p:first-of-type::first-letter {
+      float: left;
+      font-family: var(--font-heading);
+      font-size: 4em;
+      font-weight: ${headingWeight};
+      line-height: 0.75;
+      padding-right: 0.15em;
+      padding-top: 0.05em;
+      color: var(--color-accent);
+      text-shadow: 2px 2px 0 var(--color-background);
+    }`
+    } else if (decorations.dropCapStyle === 'boxed') {
+      css += `
+    .content p:first-of-type::first-letter {
+      float: left;
+      font-family: var(--font-heading);
+      font-size: 2.5em;
+      font-weight: ${headingWeight};
+      line-height: 1;
+      padding: 0.2em 0.3em;
+      margin-right: 0.15em;
+      margin-top: 0.1em;
+      background: var(--color-accent);
+      color: var(--color-surface);
+      border-radius: var(--radius);
+    }`
+    }
+
+    // Enhanced title underline styles
+    if (decorations.titleUnderline === 'gradient') {
+      css += `
+    h1::after {
+      content: '';
+      display: block;
+      width: 120px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--color-accent), transparent);
+      margin-top: 1rem;
+      border-radius: 2px;
+    }`
+    } else if (decorations.titleUnderline === 'elegant') {
+      css += `
+    h1 {
+      position: relative;
+    }
+    h1::after {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 2px;
+      background: var(--color-accent);
+      margin-top: 1rem;
+    }`
+    }
+
+    return css
+  }
+
+  /**
    * Generate complete self-contained HTML from design tokens and content
    * @param {Object} tokens - Design tokens from useDesignGenerator
    * @param {Object} content - Content object with title, text, images, sections
@@ -332,6 +404,24 @@ export function useHtmlRenderer() {
     const bodyContent = renderContent(content, tokens)
     const firstImageUrl = getFirstImageUrl(content)
     const sharedStyles = generateSharedStyles(tokens, { scope: '', forExport: false })
+
+    // Get SVG decorations based on archetype
+    const archetype = tokens.archetype || 'modern'
+    const decorations = tokens.decorations || {}
+    const archetypeDecorations = decorations.svgDecorations !== false ? getDecorationsForArchetype(archetype) : {}
+    const decorationStyles = decorations.svgDecorations !== false ? getDecorationStyles() : ''
+
+    // Generate decoration HTML
+    let decorationHtml = ''
+    if (archetypeDecorations.cornerTopRight) {
+      decorationHtml += archetypeDecorations.cornerTopRight
+    }
+    if (archetypeDecorations.cornerTopLeft) {
+      decorationHtml += archetypeDecorations.cornerTopLeft
+    }
+
+    // Generate enhanced typography styles
+    const enhancedTypographyStyles = generateEnhancedTypography(tokens)
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -349,6 +439,8 @@ export function useHtmlRenderer() {
 ${cssVars}
     }
 ${sharedStyles}
+${decorationStyles}
+${enhancedTypographyStyles}
 
     ${tokens.effects?.animations ? `
     .animate-in {
@@ -408,15 +500,127 @@ ${sharedStyles}
       }
     }
 
+    /* Comprehensive print styles for A4 output */
     @media print {
-      body { padding: 0; background: white; }
-      .page { box-shadow: none; max-width: 100%; }
-      .animate-in { animation: none; }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      html, body {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0;
+        padding: 0;
+        background: white !important;
+      }
+
+      body {
+        display: block;
+        padding: 0 !important;
+      }
+
+      /* Page container - optimized for A4 */
+      .page {
+        width: 100%;
+        max-width: none !important;
+        min-height: calc(297mm - 40mm);
+        margin: 0;
+        padding: 20mm 15mm !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        page-break-inside: avoid;
+        background: var(--color-surface) !important;
+      }
+
+      /* Typography adjustments for print */
+      h1 {
+        font-size: 28pt !important;
+        line-height: 1.1 !important;
+        margin-bottom: 8mm !important;
+        page-break-after: avoid;
+        white-space: normal !important;
+      }
+
+      h2 {
+        font-size: 14pt !important;
+        margin-bottom: 6mm !important;
+        page-break-after: avoid;
+      }
+
+      .content {
+        font-size: 11pt !important;
+        line-height: 1.6 !important;
+        orphans: 3;
+        widows: 3;
+      }
+
+      .content p {
+        margin-bottom: 4mm !important;
+        page-break-inside: avoid;
+      }
+
+      /* Gallery - optimize for print layout */
+      .gallery {
+        page-break-inside: avoid;
+        margin-bottom: 8mm !important;
+      }
+
+      .gallery img {
+        max-height: 60mm;
+        object-fit: cover;
+        page-break-inside: avoid;
+      }
+
+      /* Disable animations */
+      .animate-in {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      /* SVG decorations - ensure they print */
+      .decoration-corner,
+      .decoration-corner-tl,
+      .decoration-divider,
+      .decoration-accent {
+        display: block !important;
+        -webkit-print-color-adjust: exact !important;
+      }
+
+      /* Watermark positioning for print */
+      .watermark {
+        position: absolute;
+        bottom: 10mm;
+        right: 15mm;
+        font-size: 8pt;
+      }
+
+      /* Drop cap adjustment for print */
+      .content p:first-of-type::first-letter {
+        font-size: 32pt !important;
+      }
+
+      /* Page breaks */
+      .page-break-before {
+        page-break-before: always;
+      }
+
+      .page-break-after {
+        page-break-after: always;
+      }
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
     }
   </style>
 </head>
 <body>
   <article class="page">
+${decorationHtml}
 ${bodyContent}
 ${!isPro ? `    <div class="watermark">
       <a href="https://sizzle.love">sizzle.love</a>
@@ -651,39 +855,8 @@ ${!isPro ? `    <div class="watermark">
       .replace(/'/g, '&#039;')
   }
 
-  /**
-   * Generate HTML fragment for export (not a full document - for direct div injection)
-   * This is used by html2canvas which cannot capture iframes
-   */
-  function renderForExport(tokens, content, options = {}) {
-    const { isPro = false } = options
-    const fontsUrl = getGoogleFontsUrl(tokens)
-    const cssVars = generateCssVars(tokens)
-    const bodyContent = renderContent(content, tokens)
-    const sharedStyles = generateSharedStyles(tokens, { scope: '.export-root', forExport: true })
-
-    return `
-<style>
-  @import url('${fontsUrl}');
-
-  .export-root {
-${cssVars}
-  }
-${sharedStyles}
-</style>
-<div class="export-root">
-  <article class="page">
-${bodyContent}
-${!isPro ? `    <div class="watermark">
-      <a href="https://sizzle.love">sizzle.love</a>
-    </div>` : ''}
-  </article>
-</div>`
-  }
-
   return {
     renderToHtml,
-    renderForExport,
     formatText,
     escapeHtml
   }

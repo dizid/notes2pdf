@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import InputZone from '../components/InputZone.vue'
 import DesignPicker from '../components/DesignPicker.vue'
@@ -9,25 +9,51 @@ import OnboardingModal from '../components/OnboardingModal.vue'
 import AuthModal from '../components/AuthModal.vue'
 import { useOnboarding } from '../composables/useOnboarding'
 import { usePaywall } from '../composables/usePaywall'
+import { usePublish } from '../composables/usePublish'
+import { useTokenResolver } from '../composables/useTokenResolver'
 import { useToast } from '../composables/useToast'
+import { useDraft } from '../composables/useDraft'
 
 const route = useRoute()
 const router = useRouter()
 const { shouldShowOnboarding, startOnboarding } = useOnboarding()
 const { refreshProStatus } = usePaywall()
+const { generatePreviewHtml, clearAiPreview, aiPreviewHtml, isGeneratingPreview } = usePublish()
 const { showSuccess } = useToast()
+const { content, selectedTemplate, clear: clearDraft } = useDraft()
 
-const content = ref({
-  title: '',
-  text: '',
-  images: []
-})
+// Provide clearDraft to child components (OutputActions)
+provide('clearDraft', clearDraft)
 
 // Auth modal for ?auth=true query param
 const showAuthModal = ref(false)
 
-// Read template from URL query param, or default to bold-editorial
-const selectedTemplate = ref(route.query.template || 'bold-editorial')
+// Apply URL query template override if present
+if (route.query.template) {
+  selectedTemplate.value = route.query.template
+}
+
+// Get active design tokens for AI preview generation
+const { activeTokens } = useTokenResolver(() => null, () => selectedTemplate.value)
+
+// Handle AI preview generation request
+async function handleGenerateAiPreview() {
+  // Prepare content with image data
+  const contentForPreview = {
+    ...content.value,
+    images: content.value.images?.map(img => ({
+      data: img.data || img.src || img.url,
+      name: img.name || ''
+    }))
+  }
+
+  await generatePreviewHtml(activeTokens.value, contentForPreview, selectedTemplate.value)
+}
+
+// Clear AI preview when content or template changes
+watch([content, selectedTemplate], () => {
+  clearAiPreview()
+}, { deep: true })
 
 // Update if route changes (e.g., coming back from Studio)
 onMounted(async () => {
@@ -55,10 +81,6 @@ onMounted(async () => {
       console.error('Failed to parse remix data:', err)
       localStorage.removeItem('sizzle-remix')
     }
-  }
-
-  if (route.query.template) {
-    selectedTemplate.value = route.query.template
   }
 
   // Handle checkout success return from Stripe
@@ -112,7 +134,13 @@ function handleBrandUrl(url) {
 
       <!-- Right: Preview & Export -->
       <div class="space-y-6">
-        <PreviewPane :content="content" :template="selectedTemplate" />
+        <PreviewPane
+          :content="content"
+          :template="selectedTemplate"
+          :aiPreviewHtml="aiPreviewHtml"
+          :isGeneratingPreview="isGeneratingPreview"
+          @generate-ai-preview="handleGenerateAiPreview"
+        />
         <OutputActions :content="content" :template="selectedTemplate" :hasContent="hasContent" />
       </div>
     </div>

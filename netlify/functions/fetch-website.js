@@ -1,6 +1,33 @@
 // Netlify function to fetch website content for analysis (CORS proxy)
 // Returns HTML and extracted CSS for design analysis
 
+// Fetch with timeout and retry for transient errors
+async function fetchWithTimeout(url, options = {}, timeoutMs = 5000, retries = 2) {
+  let lastError
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal })
+      clearTimeout(timeout)
+      return response
+    } catch (err) {
+      clearTimeout(timeout)
+      lastError = err
+      // Retry on connection errors (ETIMEDOUT, ECONNRESET, etc.)
+      const isRetryable = err.cause?.code === 'ETIMEDOUT' ||
+                          err.cause?.code === 'ECONNRESET' ||
+                          err.cause?.code === 'ECONNREFUSED'
+      if (!isRetryable || attempt === retries) {
+        throw err
+      }
+      // Brief delay before retry
+      await new Promise(r => setTimeout(r, 200))
+    }
+  }
+  throw lastError
+}
+
 export async function handler(event) {
   // Only allow POST
   if (event.httpMethod !== 'POST') {
@@ -47,15 +74,15 @@ export async function handler(event) {
       }
     }
 
-    // Fetch the website
-    const response = await fetch(parsedUrl.href, {
+    // Fetch the website with 8 second timeout
+    const response = await fetchWithTimeout(parsedUrl.href, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; SizzleBot/1.0; +https://sizzle.love)',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5'
       },
       redirect: 'follow'
-    })
+    }, 8000)
 
     if (!response.ok) {
       return {
@@ -71,20 +98,20 @@ export async function handler(event) {
     const inlineStyles = extractInlineStyles(html)
     const linkedStylesheets = extractLinkedStylesheets(html, parsedUrl)
 
-    // Fetch linked stylesheets (limit to first 3 to avoid timeout)
+    // Fetch linked stylesheets (limit to first 3, 3 second timeout each)
     const externalCss = []
     for (const cssUrl of linkedStylesheets.slice(0, 3)) {
       try {
-        const cssResponse = await fetch(cssUrl, {
+        const cssResponse = await fetchWithTimeout(cssUrl, {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SizzleBot/1.0)' }
-        })
+        }, 3000)
         if (cssResponse.ok) {
           const cssText = await cssResponse.text()
           // Limit each CSS file to 50KB to avoid huge payloads
           externalCss.push(cssText.slice(0, 50000))
         }
       } catch {
-        // Skip failed CSS fetches
+        // Skip failed/timeout CSS fetches
       }
     }
 
@@ -106,11 +133,15 @@ export async function handler(event) {
       })
     }
   } catch (err) {
-    console.error('Fetch website error:', err)
+    console.error('Fetch website error:', err.name, err.message, err.stack)
+    const isTimeout = err.name === 'AbortError'
+    const errorMsg = isTimeout
+      ? 'Website took too long to respond'
+      : `${err.name}: ${err.message}` || 'Failed to fetch website'
     return {
-      statusCode: 500,
+      statusCode: isTimeout ? 504 : 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message || 'Failed to fetch website' })
+      body: JSON.stringify({ error: errorMsg })
     }
   }
 }
@@ -133,8 +164,9 @@ function extractInlineStyles(html) {
  */
 function extractLinkedStylesheets(html, baseUrl) {
   const links = []
-  const linkRegex = /<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']/gi
-  const hrefFirstRegex = /<link[^>]+href=["']([^"']+)["'][^>]+rel=["']stylesheet["']/gi
+  // Handle quoted OR unquoted attributes (HTML5 allows href=value without quotes)
+  const linkRegex = /<link[^>]+rel=["']?stylesheet["']?[^>]+href=["']?([^"'\s>]+)["']?/gi
+  const hrefFirstRegex = /<link[^>]+href=["']?([^"'\s>]+)["']?[^>]+rel=["']?stylesheet["']?/gi
 
   let match
   while ((match = linkRegex.exec(html)) !== null) {

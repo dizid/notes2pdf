@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useHtmlRenderer } from './useHtmlRenderer'
 import { usePaywall } from './usePaywall'
+import { useAuth } from './useAuth'
 
 /**
  * Composable for publishing HTML content to Cloudflare R2
@@ -8,11 +9,19 @@ import { usePaywall } from './usePaywall'
 export function usePublish() {
   const isPublishing = ref(false)
   const publishedUrl = ref(null)
+  const publishedSlug = ref(null)
   const publishError = ref(null)
   const publishErrorCode = ref(null)
   const generatedHtml = ref(null)
+
+  // AI Preview state
+  const aiPreviewHtml = ref(null)
+  const isGeneratingPreview = ref(false)
+  const previewError = ref(null)
+
   const { renderToHtml } = useHtmlRenderer()
   const { isPro } = usePaywall()
+  const { user } = useAuth()
 
   /**
    * Generate beautiful HTML using AI (Claude API)
@@ -28,7 +37,7 @@ export function usePublish() {
       const response = await fetch('/.netlify/functions/generate-html', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, tokens, templateStyle })
+        body: JSON.stringify({ content, tokens, templateStyle, isPro: isPro.value })
       })
 
       if (response.ok) {
@@ -53,6 +62,38 @@ export function usePublish() {
    */
   function generateHtmlLocal(tokens, content) {
     return renderToHtml(tokens, content, { isPro: isPro.value })
+  }
+
+  /**
+   * Generate AI preview HTML (for "Preview Final" button)
+   * Caches result until clearAiPreview() is called
+   * @param {Object} tokens - Design tokens
+   * @param {Object} content - Content object
+   * @param {string} templateStyle - Optional template style hint
+   * @returns {Promise<string|null>} AI-generated HTML or null on error
+   */
+  async function generatePreviewHtml(tokens, content, templateStyle = null) {
+    isGeneratingPreview.value = true
+    previewError.value = null
+
+    try {
+      const html = await generateHtml(tokens, content, templateStyle)
+      aiPreviewHtml.value = html
+      return html
+    } catch (err) {
+      previewError.value = err.message
+      return null
+    } finally {
+      isGeneratingPreview.value = false
+    }
+  }
+
+  /**
+   * Clear cached AI preview (call when content/tokens change)
+   */
+  function clearAiPreview() {
+    aiPreviewHtml.value = null
+    previewError.value = null
   }
 
   /**
@@ -101,6 +142,7 @@ export function usePublish() {
     publishError.value = null
     publishErrorCode.value = null
     publishedUrl.value = null
+    publishedSlug.value = null
     generatedHtml.value = null
 
     try {
@@ -124,11 +166,16 @@ export function usePublish() {
         templateStyle: templateStyle || 'bold-editorial'
       }
 
-      // Upload to R2 (with remix data for viral CTA)
+      // Upload to R2 (with remix data for viral CTA and userId for analytics)
       const response = await fetch('/.netlify/functions/upload-publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html, title, remixData })
+        body: JSON.stringify({
+          html,
+          title,
+          remixData,
+          userId: user.value?.id || null
+        })
       })
 
       if (!response.ok) {
@@ -137,9 +184,10 @@ export function usePublish() {
         throw new Error(data.error || `Upload failed: ${response.status}`)
       }
 
-      const { url } = await response.json()
+      const { url, slug } = await response.json()
       publishedUrl.value = url
-      return url
+      publishedSlug.value = slug
+      return { url, slug }
     } catch (err) {
       publishError.value = err.message
       return null
@@ -165,6 +213,7 @@ export function usePublish() {
    */
   function reset() {
     publishedUrl.value = null
+    publishedSlug.value = null
     publishError.value = null
     publishErrorCode.value = null
     generatedHtml.value = null
@@ -200,6 +249,8 @@ export function usePublish() {
   return {
     generateHtml,
     generateHtmlLocal,
+    generatePreviewHtml,
+    clearAiPreview,
     upload,
     publish,
     copyToClipboard,
@@ -207,8 +258,13 @@ export function usePublish() {
     reset,
     isPublishing,
     publishedUrl,
+    publishedSlug,
     publishError,
     publishErrorCode,
-    generatedHtml
+    generatedHtml,
+    // AI Preview
+    aiPreviewHtml,
+    isGeneratingPreview,
+    previewError
   }
 }

@@ -5,25 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Notes to Deck</title>
-    <style>
-      /* Emergency text color fix - loaded in head for highest priority */
-      * { color: #111827 !important; }
-      body, html { color: #111827 !important; }
-      .text-gray-900 { color: #111827 !important; }
-      .text-gray-800 { color: #1f2937 !important; }
-      .text-gray-700 { color: #374151 !important; }
-      .text-gray-600 { color: #4b5563 !important; }
-      .text-gray-500 { color: #6b7280 !important; }
-      .text-gray-400 { color: #9ca3af !important; }
-      /* Keep white text for dark backgrounds */
-      .text-white { color: #ffffff !important; }
-      .bg-gray-900 .text-white, .bg-gray-800 .text-white,
-      .bg-gradient-to-r .text-white, [class*="bg-amber"] .text-white,
-      [class*="bg-orange"] .text-white { color: #ffffff !important; }
-    </style>
   </head>
   <body style="color: #111827 !important;">
     <div id="app" style="color: #111827;"></div>
     <script type="module" src="/src/main.js"></script>
+    <!-- Emergency styles AFTER Vue/Tailwind loads -->
+    <style>
+      /* Force dark text - loaded after all other CSS */
+      *, *::before, *::after { color: #111827 !important; }
+      .text-white, [class*="bg-gray-9"] *, [class*="bg-gray-8"] *,
+      [class*="bg-amber"] *, [class*="bg-orange"] * { color: #fff !important; }
+    </style>
   </body>
 </html>

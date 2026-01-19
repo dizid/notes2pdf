@@ -110,9 +110,18 @@
 body {
   font-family: "Inter", system-ui, sans-serif;
   background-color: #fafafa;
-  color: #1a1a1a;
+  color: #1a1a1a !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Force dark text on main content areas */
+#app {
+  color: #1a1a1a;
+}
+
+main {
+  color: #1a1a1a;
 }
 
 /* Typography for editorial feel */

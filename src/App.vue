@@ -11,9 +11,9 @@ const isAppRoute = computed(() => route.path.startsWith('/app'))
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col" :class="isAppRoute ? 'bg-gray-50' : 'bg-white'">
+  <div class="min-h-screen flex flex-col text-gray-900" :class="isAppRoute ? 'bg-gray-50' : 'bg-white'">
     <TopNav v-if="isAppRoute" />
-    <main class="flex-1">
+    <main class="flex-1 text-gray-900">
       <router-view />
     </main>
     <footer v-if="isAppRoute" class="py-6 text-center text-sm text-gray-400 border-t border-gray-200">

@@ -1,5 +1,13 @@
 import { useDesignGenerator } from './useDesignGenerator'
-import { SHADOW_PRESETS, ANIMATION_PRESETS } from '../lib/designPresets'
+import {
+  SHADOW_PRESETS,
+  ANIMATION_PRESETS,
+  GLASS_PRESETS,
+  GRAIN_TEXTURE,
+  TEXT_SHADOW_PRESETS,
+  IMAGE_TREATMENT_PRESETS,
+  DROP_CAP_PRESETS
+} from '../lib/designPresets'
 import { getDecorationsForArchetype, getDecorationStyles } from '../lib/svgDecorations'
 
 const { getGoogleFontsUrl } = useDesignGenerator()
@@ -31,14 +39,36 @@ export function useHtmlRenderer() {
     const letterSpacing = tokens.typography?.letterSpacing || '-0.01em'
     const lineHeight = tokens.typography?.lineHeight || 1.6
     const headingWeight = tokens.typography?.headingWeight || 600
+    const textShadowKey = tokens.typography?.textShadow || tokens.effects?.textShadow || 'none'
+    const textShadow = TEXT_SHADOW_PRESETS[textShadowKey] || 'none'
+    const ligatures = tokens.typography?.ligatures
+    const opticalSizing = tokens.typography?.opticalSizing
 
     // Decoration settings
     const decorations = tokens.decorations || {}
     const imageEffects = tokens.imageEffects || {}
+    const spacing = tokens.spacing || {}
+    const whitespaceMultiplier = spacing.whitespaceMultiplier || 1
+
+    // Glass effect
+    const glassKey = tokens.effects?.glass || 'none'
+    const glass = GLASS_PRESETS[glassKey]
+
+    // Grain texture
+    const grainKey = tokens.effects?.grain || 'none'
+    const grain = GRAIN_TEXTURE[grainKey]
+
+    // Image treatment
+    const treatmentKey = imageEffects.treatment || 'none'
+    const imageTreatment = IMAGE_TREATMENT_PRESETS[treatmentKey]
 
     // For export, h1 doesn't have nowrap (no JS to resize)
     const h1Extra = forExport ? '' : 'white-space: nowrap;'
     const h1MaxFont = forExport ? '2.5rem' : '3.5rem'
+
+    // Computed spacing with whitespace multiplier
+    const baseSpacing = 'var(--spacing)'
+    const scaledSpacing = whitespaceMultiplier !== 1 ? `calc(var(--spacing) * ${whitespaceMultiplier})` : baseSpacing
 
     return `
     ${s}* { margin: 0; padding: 0; box-sizing: border-box; }
@@ -52,7 +82,34 @@ export function useHtmlRenderer() {
       justify-content: center;
       align-items: flex-start;
       padding: 0;
+      ${grain ? `position: relative;` : ''}
     }
+
+    ${grain ? `
+    ${scope || 'body'}::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: ${grain.svg};
+      opacity: ${grain.opacity};
+      pointer-events: none;
+      z-index: 1000;
+    }
+    ` : ''}
+
+    ${decorations.gridBackground ? `
+    ${scope || 'body'}::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(128, 128, 128, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(128, 128, 128, 0.03) 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+      z-index: -1;
+    }
+    ` : ''}
 
     ${s}.page {
       position: relative;
@@ -63,19 +120,31 @@ export function useHtmlRenderer() {
       padding: 1.25rem;
       padding-bottom: calc(1.25rem + 1.5rem);
       ${shadowCss !== 'none' ? `box-shadow: ${shadowCss};` : ''}
+      ${glass ? `
+      background: ${glass.background};
+      backdrop-filter: ${glass.backdropFilter};
+      -webkit-backdrop-filter: ${glass.backdropFilter};
+      border: ${glass.border};
+      ` : ''}
+      ${decorations.frame ? `
+      border: 2px solid var(--color-accent);
+      ` : ''}
     }
 
     /* Tablet and up - centered card with padding */
     @media (min-width: 640px) {
       ${scope || 'body'} {
-        padding: var(--spacing);
-        padding-top: calc(var(--spacing) * 2);
+        padding: ${scaledSpacing};
+        padding-top: calc(${scaledSpacing} * 2);
       }
       ${s}.page {
         max-width: 800px;
         border-radius: var(--radius);
-        padding: calc(var(--spacing) * 2);
-        padding-bottom: calc(var(--spacing) * 2 + 1.5rem);
+        padding: calc(${scaledSpacing} * 2);
+        padding-bottom: calc(${scaledSpacing} * 2 + 1.5rem);
+        ${decorations.frame ? `
+        padding: calc(${scaledSpacing} * 2.5);
+        ` : ''}
       }
     }
 
@@ -92,6 +161,9 @@ export function useHtmlRenderer() {
       ${h1Extra}
       overflow: hidden;
       max-width: 100%;
+      ${textShadow !== 'none' ? `text-shadow: ${textShadow};` : ''}
+      ${ligatures ? `font-feature-settings: "liga" 1, "calt" 1;` : ''}
+      ${opticalSizing ? `font-optical-sizing: auto;` : ''}
     }
 
     ${decorations.accentLine ? `
@@ -193,6 +265,66 @@ export function useHtmlRenderer() {
       color: var(--color-accent);
     }
 
+    /* Pull quotes / blockquotes */
+    ${decorations.pullQuotes ? `
+    ${s}.content blockquote,
+    ${s}.pull-quote {
+      position: relative;
+      margin: 2rem 0;
+      padding: 1.5rem 2rem;
+      font-family: var(--font-heading);
+      font-size: 1.25em;
+      font-style: italic;
+      line-height: 1.5;
+      color: var(--color-primary);
+      border-left: 4px solid var(--color-accent);
+      background: linear-gradient(90deg, rgba(var(--color-accent-rgb, 128, 128, 128), 0.05), transparent);
+    }
+
+    ${s}.content blockquote::before,
+    ${s}.pull-quote::before {
+      content: '"';
+      position: absolute;
+      top: -0.25em;
+      left: 0.5rem;
+      font-size: 3em;
+      font-family: Georgia, serif;
+      color: var(--color-accent);
+      opacity: 0.3;
+      line-height: 1;
+    }
+
+    ${s}.content blockquote cite,
+    ${s}.pull-quote cite {
+      display: block;
+      margin-top: 0.75rem;
+      font-size: 0.8em;
+      font-style: normal;
+      color: var(--color-secondary);
+      opacity: 0.7;
+    }
+    ` : `
+    ${s}.content blockquote {
+      margin: 1.5rem 0;
+      padding-left: 1.5rem;
+      border-left: 3px solid var(--color-accent);
+      font-style: italic;
+      opacity: 0.9;
+    }
+    `}
+
+    /* Mono accents for tech archetype */
+    ${tokens.typography?.monoAccents ? `
+    ${s}.content code,
+    ${s}.mono {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.9em;
+      padding: 0.15em 0.4em;
+      background: rgba(128, 128, 128, 0.1);
+      border-radius: 4px;
+    }
+    ` : ''}
+
     /* Dividers */
     ${decorations.dividers === 'simple' ? `
     ${s}.divider {
@@ -242,8 +374,40 @@ export function useHtmlRenderer() {
       aspect-ratio: 4/3;
       object-fit: cover;
       ${imageEffects.border ? 'border: 1px solid rgba(128,128,128,0.15);' : ''}
-      ${!forExport ? 'transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;' : ''}
+      ${!forExport ? 'transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, filter 0.3s ease;' : ''}
+      ${imageTreatment?.filter ? `filter: ${imageTreatment.filter};` : ''}
+      ${imageTreatment?.mixBlendMode ? `mix-blend-mode: ${imageTreatment.mixBlendMode};` : ''}
     }
+
+    ${treatmentKey === 'polaroid' ? `
+    ${s}.gallery .img-wrapper {
+      display: inline-block;
+      padding: ${imageTreatment.padding};
+      padding-bottom: ${imageTreatment.paddingBottom};
+      background: ${imageTreatment.background};
+      box-shadow: ${imageTreatment.boxShadow};
+      transform: ${imageTreatment.transform};
+      transition: transform 0.3s ease;
+    }
+    ${s}.gallery .img-wrapper:nth-child(even) {
+      transform: rotate(2deg);
+    }
+    ${s}.gallery .img-wrapper img {
+      border-radius: 0;
+    }
+    ${!forExport ? `
+    ${s}.gallery .img-wrapper:hover {
+      transform: rotate(0) scale(1.02);
+    }
+    ` : ''}
+    ` : ''}
+
+    ${treatmentKey === 'masked' ? `
+    ${s}.gallery img {
+      border-radius: ${imageTreatment.borderRadius};
+      aspect-ratio: ${imageTreatment.aspectRatio};
+    }
+    ` : ''}
 
     ${imageEffects.overlay === 'gradient' ? `
     ${s}.gallery .img-wrapper {
@@ -330,40 +494,72 @@ export function useHtmlRenderer() {
     const headingWeight = tokens.typography?.headingWeight || 600
     let css = ''
 
-    // Enhanced drop cap styles
-    if (decorations.dropCapStyle === 'decorative') {
-      css += `
+    // Enhanced drop cap styles (supports all DROP_CAP_PRESETS)
+    const dropCapStyle = decorations.dropCapStyle
+    if (dropCapStyle && dropCapStyle !== 'simple') {
+      if (dropCapStyle === 'decorative') {
+        css += `
     .content p:first-of-type::first-letter {
       float: left;
       font-family: var(--font-heading);
       font-size: 4em;
-      font-weight: ${headingWeight};
+      font-weight: 700;
       line-height: 0.75;
       padding-right: 0.15em;
       padding-top: 0.05em;
       color: var(--color-accent);
       text-shadow: 2px 2px 0 var(--color-background);
     }`
-    } else if (decorations.dropCapStyle === 'boxed') {
-      css += `
+      } else if (dropCapStyle === 'boxed') {
+        css += `
     .content p:first-of-type::first-letter {
       float: left;
       font-family: var(--font-heading);
       font-size: 2.5em;
       font-weight: ${headingWeight};
       line-height: 1;
-      padding: 0.2em 0.3em;
-      margin-right: 0.15em;
+      padding: 0.3em 0.5em;
+      margin-right: 0.5em;
       margin-top: 0.1em;
+      margin-bottom: 0.1em;
       background: var(--color-accent);
-      color: var(--color-surface);
+      color: var(--color-background);
       border-radius: var(--radius);
     }`
+      } else if (dropCapStyle === 'outlined') {
+        css += `
+    .content p:first-of-type::first-letter {
+      float: left;
+      font-family: var(--font-heading);
+      font-size: 4em;
+      font-weight: 700;
+      line-height: 0.75;
+      padding-right: 0.15em;
+      padding-top: 0.05em;
+      -webkit-text-stroke: 2px var(--color-accent);
+      color: transparent;
+    }`
+      } else if (dropCapStyle === 'colored') {
+        css += `
+    .content p:first-of-type::first-letter {
+      float: left;
+      font-family: var(--font-heading);
+      font-size: 3.5em;
+      font-weight: ${headingWeight};
+      line-height: 0.8;
+      padding-right: 0.1em;
+      padding-top: 0.1em;
+      color: var(--color-accent);
+    }`
+      }
     }
 
     // Enhanced title underline styles
     if (decorations.titleUnderline === 'gradient') {
       css += `
+    h1 {
+      margin-bottom: 0.5rem;
+    }
     h1::after {
       content: '';
       display: block;
@@ -371,12 +567,14 @@ export function useHtmlRenderer() {
       height: 4px;
       background: linear-gradient(90deg, var(--color-accent), transparent);
       margin-top: 1rem;
+      margin-bottom: 1rem;
       border-radius: 2px;
     }`
     } else if (decorations.titleUnderline === 'elegant') {
       css += `
     h1 {
       position: relative;
+      margin-bottom: 0.5rem;
     }
     h1::after {
       content: '';
@@ -385,6 +583,23 @@ export function useHtmlRenderer() {
       height: 2px;
       background: var(--color-accent);
       margin-top: 1rem;
+      margin-bottom: 1rem;
+    }`
+    }
+
+    // Section divider decoration placeholder class
+    if (decorations.sectionDividers) {
+      css += `
+    .section-divider {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 2.5rem 0;
+      opacity: 0.6;
+    }
+    .section-divider svg {
+      max-width: 200px;
+      height: auto;
     }`
     }
 
@@ -413,15 +628,36 @@ export function useHtmlRenderer() {
 
     // Generate decoration HTML
     let decorationHtml = ''
+    // Top corners
     if (archetypeDecorations.cornerTopRight) {
       decorationHtml += archetypeDecorations.cornerTopRight
     }
     if (archetypeDecorations.cornerTopLeft) {
       decorationHtml += archetypeDecorations.cornerTopLeft
     }
+    // Bottom corners
+    if (archetypeDecorations.cornerBottomRight) {
+      decorationHtml += archetypeDecorations.cornerBottomRight
+    }
+    if (archetypeDecorations.cornerBottomLeft) {
+      decorationHtml += archetypeDecorations.cornerBottomLeft
+    }
+    // Frame decoration (wraps content)
+    if (archetypeDecorations.frame) {
+      decorationHtml += archetypeDecorations.frame
+    }
+    // Pattern overlay
+    if (archetypeDecorations.pattern) {
+      decorationHtml += archetypeDecorations.pattern
+    }
 
     // Generate enhanced typography styles
     const enhancedTypographyStyles = generateEnhancedTypography(tokens)
+
+    // Add mono font if monoAccents is enabled
+    const monoFontLink = tokens.typography?.monoAccents
+      ? '\n  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">'
+      : ''
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -433,7 +669,7 @@ export function useHtmlRenderer() {
   <title>${escapeHtml(content.title || 'Untitled')}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="${fontsUrl}" rel="stylesheet">
+  <link href="${fontsUrl}" rel="stylesheet">${monoFontLink}
   <style>
     :root {
 ${cssVars}
@@ -702,6 +938,15 @@ ${!isPro ? `    <div class="watermark">
   }
 
   /**
+   * Convert hex color to RGB string (e.g., "#ff6b6b" -> "255, 107, 107")
+   */
+  function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+    if (!result) return '128, 128, 128'
+    return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+  }
+
+  /**
    * Generate CSS custom properties from design tokens
    */
   function generateCssVars(tokens) {
@@ -722,9 +967,13 @@ ${!isPro ? `    <div class="watermark">
     const gradientCss = generateGradientCss(tokens.gradient)
     const backgroundValue = gradientCss || tokens.colors.background
 
+    // Compute RGB version of accent for rgba() usage
+    const accentRgb = hexToRgb(tokens.colors.accent)
+
     return `      --color-primary: ${tokens.colors.primary};
       --color-secondary: ${tokens.colors.secondary};
       --color-accent: ${tokens.colors.accent};
+      --color-accent-rgb: ${accentRgb};
       --color-background: ${backgroundValue};
       --color-background-fallback: ${tokens.colors.background};
       --color-surface: ${tokens.colors.surface};
@@ -811,7 +1060,7 @@ ${!isPro ? `    <div class="watermark">
   }
 
   /**
-   * Format plain text to HTML (basic markdown support)
+   * Format plain text to HTML (enhanced markdown support)
    */
   function formatText(text) {
     if (!text) return ''
@@ -828,15 +1077,58 @@ ${!isPro ? `    <div class="watermark">
     html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
     html = html.replace(/_(.+?)_/g, '<em>$1</em>')
 
-    // Line breaks to paragraphs
-    const paragraphs = html.split(/\n\n+/)
-    if (paragraphs.length > 1) {
-      html = paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('\n      ')
-    } else {
-      html = `<p>${html.replace(/\n/g, '<br>')}</p>`
+    // Inline code: `code`
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+
+    // Process blocks (blockquotes, paragraphs)
+    const lines = html.split('\n')
+    const blocks = []
+    let currentBlock = []
+    let inBlockquote = false
+
+    for (const line of lines) {
+      const isQuoteLine = line.startsWith('&gt; ')
+
+      if (isQuoteLine && !inBlockquote) {
+        // Flush current paragraph block
+        if (currentBlock.length > 0) {
+          blocks.push({ type: 'p', content: currentBlock.join('<br>') })
+          currentBlock = []
+        }
+        inBlockquote = true
+        currentBlock.push(line.slice(5)) // Remove "&gt; " prefix
+      } else if (isQuoteLine && inBlockquote) {
+        currentBlock.push(line.slice(5))
+      } else if (!isQuoteLine && inBlockquote) {
+        // End blockquote
+        blocks.push({ type: 'blockquote', content: currentBlock.join('<br>') })
+        currentBlock = []
+        inBlockquote = false
+        if (line.trim()) currentBlock.push(line)
+      } else if (line.trim() === '') {
+        // Empty line - flush current block
+        if (currentBlock.length > 0) {
+          blocks.push({ type: inBlockquote ? 'blockquote' : 'p', content: currentBlock.join('<br>') })
+          currentBlock = []
+        }
+        inBlockquote = false
+      } else {
+        currentBlock.push(line)
+      }
     }
 
-    return html
+    // Flush remaining content
+    if (currentBlock.length > 0) {
+      blocks.push({ type: inBlockquote ? 'blockquote' : 'p', content: currentBlock.join('<br>') })
+    }
+
+    // Render blocks
+    return blocks.map(block => {
+      if (block.type === 'blockquote') {
+        return `<blockquote>${block.content}</blockquote>`
+      }
+      return `<p>${block.content}</p>`
+    }).join('\n      ')
   }
 
   /**

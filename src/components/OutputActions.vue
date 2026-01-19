@@ -197,8 +197,8 @@ function closeModal() {
 </script>
 
 <template>
-  <div class="bg-white border border-gray-200 rounded-lg p-6">
-    <h2 class="text-lg font-medium mb-4">Export</h2>
+  <div class="bg-white border border-gray-200 rounded-lg p-6 text-gray-900">
+    <h2 class="text-lg font-medium mb-4 text-gray-900">Export</h2>
 
     <!-- Validation warnings -->
     <div v-if="validationErrors.length > 0" class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">

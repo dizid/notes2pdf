@@ -97,11 +97,11 @@ const showPreviewButton = computed(() => {
 </script>
 
 <template>
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden text-gray-900">
     <!-- Header -->
     <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <h2 class="text-lg font-medium">Preview</h2>
+        <h2 class="text-lg font-medium text-gray-900">Preview</h2>
         <!-- AI Preview indicator -->
         <span v-if="aiPreviewHtml" class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
           Final

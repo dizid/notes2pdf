@@ -152,9 +152,9 @@ function handleParsedContent(parsed) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-6 py-8">
+  <div class="max-w-7xl mx-auto px-6 py-8 text-gray-900">
     <header class="mb-8">
-      <h1 class="text-3xl mb-2">Create a Page</h1>
+      <h1 class="text-3xl mb-2 text-gray-900">Create a Page</h1>
       <p class="text-gray-500">Add your content, pick a template, publish instantly</p>
     </header>
 

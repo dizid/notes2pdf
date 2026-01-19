@@ -100,10 +100,10 @@ function rejectParsed() {
 </script>
 
 <template>
-  <div class="bg-white border border-gray-200 rounded-lg p-6">
+  <div class="bg-white border border-gray-200 rounded-lg p-6 text-gray-900">
     <!-- Header with toggle -->
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-medium">Content</h2>
+      <h2 class="text-lg font-medium text-gray-900">Content</h2>
       <button
         @click="toggleSmartPaste"
         :class="[

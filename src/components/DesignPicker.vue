@@ -128,7 +128,7 @@ function goToStudio() {
 </script>
 
 <template>
-  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm text-gray-900">
     <!-- Header -->
     <div class="flex items-center justify-between mb-5">
       <div>

@@ -108,16 +108,16 @@
    ========================================================================== */
 
 body {
-  font-family: var(--font-body);
+  font-family: "Inter", system-ui, sans-serif;
   background-color: #fafafa;
-  color: var(--color-brand);
+  color: #1a1a1a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* Typography for editorial feel */
 h1, h2, h3 {
-  font-family: var(--font-display);
+  font-family: "Georgia", serif;
   font-weight: 400;
   letter-spacing: -0.02em;
 }

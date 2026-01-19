@@ -1,12 +1,10 @@
 import { useDesignGenerator } from './useDesignGenerator'
 import {
   SHADOW_PRESETS,
-  ANIMATION_PRESETS,
   GLASS_PRESETS,
   GRAIN_TEXTURE,
   TEXT_SHADOW_PRESETS,
-  IMAGE_TREATMENT_PRESETS,
-  DROP_CAP_PRESETS
+  IMAGE_TREATMENT_PRESETS
 } from '../lib/designPresets'
 import { getDecorationsForArchetype, getDecorationStyles } from '../lib/svgDecorations'
 
@@ -28,12 +26,6 @@ export function useHtmlRenderer() {
     // Get shadow style from tokens or default to layered
     const shadowStyle = tokens.effects?.shadowStyle || (tokens.effects?.shadows ? 'layered' : 'none')
     const shadowCss = SHADOW_PRESETS[shadowStyle] || SHADOW_PRESETS.layered
-
-    // Get animation settings
-    const animStyle = tokens.effects?.animations
-    const animPreset = animStyle === true ? ANIMATION_PRESETS.normal
-      : animStyle === false ? ANIMATION_PRESETS.none
-      : ANIMATION_PRESETS[animStyle] || ANIMATION_PRESETS.normal
 
     // Typography settings
     const letterSpacing = tokens.typography?.letterSpacing || '-0.01em'

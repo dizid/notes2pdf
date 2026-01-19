@@ -125,7 +125,8 @@ function updateContent(newContent) {
   content.value = { ...content.value, ...newContent }
 }
 
-// Handle brand URL from onboarding
+// Handle brand URL from onboarding (placeholder for future implementation)
+// eslint-disable-next-line no-unused-vars
 function handleBrandUrl(url) {
   // Could navigate to studio with URL or store for later
   // Future: Navigate to studio with URL pre-filled

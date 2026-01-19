@@ -3,13 +3,13 @@ import { usePaywall } from '../composables/usePaywall'
 import { useAuth } from '../composables/useAuth'
 import { useToast } from '../composables/useToast'
 
-const props = defineProps({
+defineProps({
   show: Boolean
 })
 
 const emit = defineEmits(['close', 'signIn'])
 
-const { usageCount, FREE_TIER_LIMIT, createCheckout, loading, error } = usePaywall()
+const { createCheckout, loading, error } = usePaywall()
 const { isAuthenticated } = useAuth()
 const { showError } = useToast()
 

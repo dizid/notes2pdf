@@ -1,10 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { useTemplates } from '../composables/useTemplates'
 import { useHtmlRenderer } from '../composables/useHtmlRenderer'
 import { useTokenResolver } from '../composables/useTokenResolver'
 import { usePaywall } from '../composables/usePaywall'
-import DynamicTemplate from '../templates/DynamicTemplate.vue'
 
 const props = defineProps({
   content: Object,
@@ -23,12 +21,9 @@ const props = defineProps({
 
 const emit = defineEmits(['fullscreen', 'generate-ai-preview'])
 
-const { getTemplateById } = useTemplates()
 const { renderToHtml } = useHtmlRenderer()
 const { activeTokens } = useTokenResolver(() => props.tokens, () => props.template)
 const { isPro } = usePaywall()
-
-const currentTemplate = computed(() => getTemplateById(props.template))
 
 // Fullscreen state
 const isFullscreen = ref(false)
@@ -56,23 +51,6 @@ const previewHtml = computed(() => {
       }
 
   return renderToHtml(tokens, contentForPreview, { isPro: isPro.value })
-})
-
-// For built-in templates, use their component directly
-// For custom templates, use DynamicTemplate with their styles
-const templateComponent = computed(() => {
-  if (currentTemplate.value?.component) {
-    return currentTemplate.value.component
-  }
-  return DynamicTemplate
-})
-
-// Pass styles to DynamicTemplate for custom templates
-const templateStyles = computed(() => {
-  if (currentTemplate.value?.type === 'custom') {
-    return currentTemplate.value.styles || {}
-  }
-  return null
 })
 
 function toggleFullscreen() {

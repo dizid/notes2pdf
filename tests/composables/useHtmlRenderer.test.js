@@ -356,7 +356,7 @@ describe('useHtmlRenderer', () => {
       const html = renderer.renderToHtml(tokensWithAnim, { title: 'Test' })
 
       expect(html).toContain('animate-in')
-      expect(html).toContain('@keyframes fadeIn')
+      expect(html).toContain('@keyframes fadeSlideIn')
     })
 
     it('should not include animation classes when disabled', () => {

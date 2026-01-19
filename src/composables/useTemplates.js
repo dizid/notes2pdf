@@ -1,4 +1,4 @@
-import { ref, computed, shallowRef, markRaw } from 'vue'
+import { ref, computed, markRaw } from 'vue'
 import BoldEditorial from '../templates/BoldEditorial.vue'
 import PhotoSpread from '../templates/PhotoSpread.vue'
 import CleanDeck from '../templates/CleanDeck.vue'

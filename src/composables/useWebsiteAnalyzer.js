@@ -3,7 +3,6 @@ import {
   normalizeColor,
   normalizeHex,
   rgbToHex,
-  hslToHex,
   isValidBrandColor,
   deduplicateSimilarColors
 } from '../lib/colorUtils.js'

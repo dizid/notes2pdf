@@ -296,7 +296,7 @@ export function useDesignGenerator() {
 
       const data = await response.json()
       return data.styles
-    } catch (err) {
+    } catch {
       return generateLocalDesign({ colors, prompt, mood, suggestedGradient })
     } finally {
       isGenerating.value = false

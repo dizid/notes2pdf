@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTemplates } from '../composables/useTemplates'
 import { useDesignGenerator, FONT_PAIRS, isLightColor } from '../composables/useDesignGenerator'
@@ -244,27 +244,6 @@ function handleColorPicked(event) {
   }
 }
 
-// Helper to convert hex to rgba
-function hexToRgba(hex, alpha) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
-// Computed style for dynamic background in preview
-const previewBackgroundStyle = computed(() => {
-  if (!combinedAnalysis.value?.suggestedGradient) return {}
-
-  const gradient = combinedAnalysis.value.suggestedGradient
-  // Use 40% opacity for visible but subtle preview background
-  const stopsStr = gradient.stops.map(s => `${hexToRgba(s.color, 0.4)} ${s.position}%`).join(', ')
-
-  return {
-    background: `linear-gradient(${gradient.angle}deg, ${stopsStr})`
-  }
-})
-
 function saveTemplate() {
   if (!templateName.value.trim()) {
     showError('Please enter a name for your template')
@@ -299,10 +278,6 @@ function startOver() {
   selectedFontPair.value = null
   designMode.value = 'light'
 }
-
-const hasInput = computed(() =>
-  brandColors.value.length > 0 || stylePrompt.value.trim() || websiteUrl.value.trim() || websiteAnalysis.value
-)
 
 // Analysis status message
 const analysisStatus = ref('')
@@ -481,11 +456,6 @@ function clearWebsiteAnalysis() {
   websiteUrl.value = ''
   websiteAnalysis.value = null
 }
-
-// Get current effective mood (from website or image analysis)
-const effectiveMood = computed(() => {
-  return websiteAnalysis.value?.mood || combinedAnalysis.value?.mood || null
-})
 
 // Font pairs for dropdown
 const fontPairs = FONT_PAIRS

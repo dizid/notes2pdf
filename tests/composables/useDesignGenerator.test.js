@@ -185,12 +185,13 @@ describe('useDesignGenerator', () => {
       expect(tokens.typography.headingFont).toBe('Cormorant Garamond')
     })
 
-    it('should default to modern-minimal when no prompt or fontPairId', async () => {
+    it('should default to geometric (modern archetype) when no prompt or fontPairId', async () => {
       const tokens = await generator.generateDesignTokens({
         colors: ['#1a1a1a']
       })
 
-      expect(tokens.typography.fontPairId).toBe('modern-minimal')
+      // Default archetype is 'modern' which uses 'geometric' font pair
+      expect(tokens.typography.fontPairId).toBe('geometric')
     })
 
     it('should prioritize explicit fontPairId over prompt', async () => {

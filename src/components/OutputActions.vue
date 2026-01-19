@@ -80,7 +80,7 @@ function executePrint({ html }) {
       // Wait for fonts to actually load before printing
       try {
         await printWindow.document.fonts.ready
-      } catch (e) {
+      } catch {
         // Fallback for browsers without fonts API
         await new Promise(resolve => setTimeout(resolve, 500))
       }

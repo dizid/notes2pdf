@@ -6,6 +6,7 @@ import { useStorage } from '../composables/useStorage'
 import { useToast } from '../composables/useToast'
 import { useTemplates } from '../composables/useTemplates'
 import { usePaywall } from '../composables/usePaywall'
+import { useAuth } from '../composables/useAuth'
 import { useHtmlRenderer } from '../composables/useHtmlRenderer'
 import { resolveTokens } from '../composables/useTokenResolver'
 import PaywallModal from './PaywallModal.vue'
@@ -26,6 +27,7 @@ const { saveToHistory } = useStorage()
 const { showSuccess } = useToast()
 const { getTemplateById, builtInTemplates } = useTemplates()
 const { canPublish, incrementUsage, initUsage } = usePaywall()
+const { isAuthenticated } = useAuth()
 const clearDraft = inject('clearDraft', () => {})
 
 // Modal state
@@ -35,6 +37,7 @@ const showAuthModal = ref(false)
 const showPrintPreview = ref(false)
 const printPreviewHtml = ref('')
 const copied = ref(false)
+const pendingPublishAfterAuth = ref(false)
 
 // Load usage on mount
 onMounted(() => initUsage())
@@ -114,6 +117,13 @@ function executePrint({ html }) {
 async function handlePublish() {
   if (!isValid.value) return
 
+  // Check auth first — show login instead of failing with "Authentication required"
+  if (!isAuthenticated.value) {
+    pendingPublishAfterAuth.value = true
+    showAuthModal.value = true
+    return
+  }
+
   // Check paywall before publishing
   if (!canPublish.value) {
     showPaywallModal.value = true
@@ -168,6 +178,15 @@ function handleSignInFromPaywall() {
 
 function handleAuthenticated() {
   showAuthModal.value = false
+
+  // Auto-publish after login if that was the pending action
+  if (pendingPublishAfterAuth.value) {
+    pendingPublishAfterAuth.value = false
+    handlePublish()
+    return
+  }
+
+  // Original: redirect to pricing (from paywall sign-in flow)
   router.push('/pricing')
 }
 

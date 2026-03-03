@@ -9,12 +9,22 @@ import {
   errorResponse
 } from './lib/validate.js'
 import { fetchWithRetry } from './lib/retry.js'
+import { requireAuth } from './lib/auth.js'
+import { checkRateLimit } from './lib/rate-limit.js'
 
 export async function handler(event) {
   // Only allow POST
   if (event.httpMethod !== 'POST') {
     return errorResponse(405, 'Method not allowed')
   }
+
+  // Rate limit check
+  const { error: rateLimitError } = checkRateLimit(event, { maxRequests: 15 })
+  if (rateLimitError) return rateLimitError
+
+  // Auth check
+  const { user, error: authError } = await requireAuth(event)
+  if (authError) return authError
 
   // Check for API key
   const apiKey = process.env.ANTHROPIC_API_KEY

@@ -1,10 +1,12 @@
 import { ref } from 'vue'
+import { useAuth } from './useAuth'
 
 /**
  * Composable for parsing unstructured notes into structured content
  * Uses Claude API to extract title, body, highlights, and suggest archetypes
  */
 export function useContentParser() {
+  const { session } = useAuth()
   const isParsing = ref(false)
   const parseError = ref(null)
   const parsedContent = ref(null)
@@ -33,7 +35,12 @@ export function useContentParser() {
     try {
       const response = await fetch('/.netlify/functions/parse-content', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session.value?.access_token && {
+            'Authorization': `Bearer ${session.value.access_token}`
+          })
+        },
         body: JSON.stringify({ rawText: trimmed })
       })
 

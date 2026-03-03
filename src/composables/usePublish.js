@@ -21,7 +21,7 @@ export function usePublish() {
 
   const { renderToHtml } = useHtmlRenderer()
   const { isPro } = usePaywall()
-  const { user } = useAuth()
+  const { user, session } = useAuth()
 
   /**
    * Generate beautiful HTML using AI (Claude API)
@@ -36,7 +36,12 @@ export function usePublish() {
       // Try AI generation first
       const response = await fetch('/.netlify/functions/generate-html', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session.value?.access_token && {
+            'Authorization': `Bearer ${session.value.access_token}`
+          })
+        },
         body: JSON.stringify({ content, tokens, templateStyle, isPro: isPro.value })
       })
 
@@ -48,10 +53,20 @@ export function usePublish() {
         }
       }
 
-      // Fall back to local renderer
+      // Surface auth/rate-limit errors instead of silent fallback
+      if (response.status === 401 || response.status === 429) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || 'Authentication required')
+      }
+
+      // Fall back to local renderer for other failures
       console.log('AI generation failed, using local renderer')
       return renderToHtml(tokens, content, { isPro: isPro.value })
     } catch (err) {
+      // Re-throw auth/rate-limit errors so they surface to the user
+      if (err.message?.includes('Authentication') || err.message?.includes('Too many requests') || err.message?.includes('expired token')) {
+        throw err
+      }
       console.warn('AI HTML generation error, falling back to local:', err.message)
       return renderToHtml(tokens, content, { isPro: isPro.value })
     }

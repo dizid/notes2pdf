@@ -2,19 +2,101 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Notes to Deck</title>
+
+    <!-- Primary Meta Tags -->
+    <title>Sizzle - Turn Any Content into Beautiful Shareable Pages</title>
+    <meta name="title" content="Sizzle - Turn Any Content into Beautiful Shareable Pages" />
+    <meta name="description" content="AI-powered tool that transforms your content into stunning, shareable web pages. Paste text or URLs, pick a design, and create beautiful pages in seconds." />
+    <meta name="keywords" content="content design, web pages, AI design, shareable pages, content to PDF, design tool" />
+    <meta name="author" content="Sizzle" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://mf-dizid.netlify.app/" />
+    <meta property="og:title" content="Sizzle - Turn Any Content into Beautiful Shareable Pages" />
+    <meta property="og:description" content="AI-powered tool that transforms your content into stunning, shareable web pages. Create beautiful pages in seconds." />
+    <meta property="og:image" content="https://mf-dizid.netlify.app/og-image.png" />
+    <meta property="og:site_name" content="Sizzle" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://mf-dizid.netlify.app/" />
+    <meta name="twitter:title" content="Sizzle - Turn Any Content into Beautiful Shareable Pages" />
+    <meta name="twitter:description" content="AI-powered tool that transforms your content into stunning, shareable web pages." />
+    <meta name="twitter:image" content="https://mf-dizid.netlify.app/og-image.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Sizzle",
+      "description": "AI-powered tool that transforms your content into stunning, shareable web pages",
+      "url": "https://mf-dizid.netlify.app",
+      "applicationCategory": "DesignApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free tier available"
+      },
+      "featureList": [
+        "AI-powered design analysis",
+        "One-click page generation",
+        "Multiple design templates",
+        "PDF export",
+        "Shareable links"
+      ]
+    }
+    </script>
   </head>
-  <body style="color: #111827 !important;">
-    <div id="app" style="color: #111827;"></div>
+  <body>
+    <!-- Noscript fallback for crawlers -->
+    <noscript>
+      <header>
+        <nav>
+          <a href="/">Sizzle</a>
+          <a href="/pricing">Pricing</a>
+          <a href="/app">Create</a>
+        </nav>
+      </header>
+      <main>
+        <h1>Turn Any Content into Beautiful Shareable Pages</h1>
+        <p>Sizzle is an AI-powered design tool that transforms your content into stunning, shareable web pages in seconds.</p>
+
+        <h2>How It Works</h2>
+        <ol>
+          <li><strong>Paste your content</strong> - Text, URLs, or notes</li>
+          <li><strong>Pick a design</strong> - AI suggests the perfect style</li>
+          <li><strong>Share instantly</strong> - Get a beautiful page or PDF</li>
+        </ol>
+
+        <h2>Features</h2>
+        <ul>
+          <li>AI-powered design analysis</li>
+          <li>Multiple professional templates</li>
+          <li>One-click PDF export</li>
+          <li>Shareable links</li>
+          <li>Free to start</li>
+        </ul>
+
+        <h2>Pricing</h2>
+        <p><strong>Free:</strong> 3 pages/month</p>
+        <p><strong>Pro:</strong> Unlimited pages, premium templates</p>
+      </main>
+      <footer>
+        <p>&copy; 2025 Sizzle. All rights reserved.</p>
+        <a href="/privacy">Privacy</a> | <a href="/terms">Terms</a>
+      </footer>
+    </noscript>
+
+    <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
-    <!-- Emergency styles AFTER Vue/Tailwind loads -->
-    <style>
-      /* Force dark text - loaded after all other CSS */
-      *, *::before, *::after { color: #111827 !important; }
-      .text-white, [class*="bg-gray-9"] *, [class*="bg-gray-8"] *,
-      [class*="bg-amber"] *, [class*="bg-orange"] * { color: #fff !important; }
-    </style>
   </body>
 </html>

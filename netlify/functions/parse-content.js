@@ -8,6 +8,8 @@ import {
   successResponse
 } from './lib/validate.js'
 import { fetchWithRetry } from './lib/retry.js'
+import { requireAuth } from './lib/auth.js'
+import { checkRateLimit } from './lib/rate-limit.js'
 
 // Valid archetypes for suggestion
 const VALID_ARCHETYPES = ['minimal', 'bold', 'elegant', 'playful', 'tech', 'modern', 'friendly', 'luxury', 'organic']
@@ -17,6 +19,14 @@ export async function handler(event) {
   if (event.httpMethod !== 'POST') {
     return errorResponse(405, 'Method not allowed')
   }
+
+  // Rate limit check
+  const { error: rateLimitError } = checkRateLimit(event, { maxRequests: 20 })
+  if (rateLimitError) return rateLimitError
+
+  // Auth check
+  const { user, error: authError } = await requireAuth(event)
+  if (authError) return authError
 
   // Check for API key
   const apiKey = process.env.ANTHROPIC_API_KEY

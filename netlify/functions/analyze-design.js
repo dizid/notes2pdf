@@ -2,6 +2,8 @@
 // Takes a screenshot via ApiFlash, then uses Claude to extract design characteristics
 
 import Anthropic from '@anthropic-ai/sdk'
+import { requireAuth } from './lib/auth.js'
+import { checkRateLimit } from './lib/rate-limit.js'
 
 const DESIGN_ANALYSIS_PROMPT = `You are a CSS expert. Analyze this website screenshot and extract PRECISE, DIRECTLY-USABLE design values.
 
@@ -74,6 +76,14 @@ export async function handler(event) {
       body: JSON.stringify({ error: 'Method not allowed' })
     }
   }
+
+  // Rate limit check
+  const { error: rateLimitError } = checkRateLimit(event, { maxRequests: 10 })
+  if (rateLimitError) return rateLimitError
+
+  // Auth check
+  const { user, error: authError } = await requireAuth(event)
+  if (authError) return authError
 
   const apiflashKey = process.env.APIFLASH_ACCESS_KEY
   const anthropicKey = process.env.ANTHROPIC_API_KEY

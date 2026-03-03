@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useAuth } from './useAuth'
 import { isLightColor, adjustBrightness, hexToRgb } from '../lib/colorUtils.js'
 import {
   FONT_PAIRS,
@@ -17,6 +18,7 @@ const isGenerating = ref(false)
 const error = ref(null)
 
 export function useDesignGenerator() {
+  const { session } = useAuth()
   /**
    * Generate design tokens from colors and mood
    */
@@ -283,7 +285,12 @@ export function useDesignGenerator() {
     try {
       const response = await fetch('/.netlify/functions/generate-design', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session.value?.access_token && {
+            'Authorization': `Bearer ${session.value.access_token}`
+          })
+        },
         body: JSON.stringify({ colors, prompt, mood, suggestedGradient })
       })
 
@@ -291,12 +298,18 @@ export function useDesignGenerator() {
         if (response.status === 404) {
           return generateLocalDesign({ colors, prompt, mood, suggestedGradient })
         }
+        // Surface auth/rate-limit errors instead of silent fallback
+        if (response.status === 401 || response.status === 429) {
+          const data = await response.json().catch(() => ({}))
+          error.value = data.error || 'Authentication required'
+          return generateLocalDesign({ colors, prompt, mood, suggestedGradient })
+        }
         throw new Error('Failed to generate design')
       }
 
       const data = await response.json()
       return data.styles
-    } catch {
+    } catch (err) {
       return generateLocalDesign({ colors, prompt, mood, suggestedGradient })
     } finally {
       isGenerating.value = false

@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useAuth } from './useAuth'
 import {
   normalizeColor,
   normalizeHex,
@@ -13,6 +14,7 @@ import { analyzeMood } from '../lib/moodAnalyzer.js'
  * Extracts colors, fonts, and design characteristics from a URL
  */
 export function useWebsiteAnalyzer() {
+  const { session } = useAuth()
   const isAnalyzing = ref(false)
   const error = ref(null)
   const analysis = ref(null)
@@ -200,12 +202,22 @@ export function useWebsiteAnalyzer() {
     try {
       const response = await fetch('/.netlify/functions/analyze-design', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session.value?.access_token && {
+            'Authorization': `Bearer ${session.value.access_token}`
+          })
+        },
         body: JSON.stringify({ url })
       })
 
       if (!response.ok) {
-        const data = await response.json()
+        const data = await response.json().catch(() => ({}))
+        // Surface auth/rate-limit errors instead of silent fallback
+        if (response.status === 401 || response.status === 429) {
+          error.value = data.error || 'Authentication required'
+          return null
+        }
         console.warn('Vision analysis failed:', data.error)
         return null
       }

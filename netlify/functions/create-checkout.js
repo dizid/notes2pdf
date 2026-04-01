@@ -45,7 +45,7 @@ export async function handler(event) {
       const customer = await stripe.customers.create({
         email,
         metadata: {
-          supabase_user_id: userId
+          user_id: userId
         }
       })
       customerId = customer.id
@@ -65,7 +65,9 @@ export async function handler(event) {
       success_url: `${returnUrl}?checkout=success`,
       cancel_url: `${returnUrl}?checkout=cancelled`,
       metadata: {
-        supabase_user_id: userId
+        user_id: userId,
+        plugaff_ref: (event.headers.cookie || '').match(/plugaff_ref=([^;]+)/)?.[1] || '',
+        plugaff_app: 'notes2pdf',
       }
     })
 
